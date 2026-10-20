@@ -1,0 +1,57 @@
+minimum_prek_version: "0.4.9"
+default_install_hook_types: [pre-commit]
+default_stages: [pre-commit]
+exclude: '(^|/)(_build|target|\.mooncakes|\.openseek)/'
+
+repos:
+  - repo: builtin
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+  - repo: local
+    hooks:
+      - id: prek-config
+        name: Validate prek configuration
+        entry: prek validate-config .pre-commit-config.yaml
+        language: system
+        files: '^\.pre-commit-config\.yaml$'
+        pass_filenames: false
+      - id: moon-fmt
+        name: Format MoonBit packages
+        entry: moon fmt
+        language: system
+        files: '(^|/)(moon\.(mod|pkg)(\.json)?|[^/]+\.mbt(\.md)?)$'
+        pass_filenames: false
+        require_serial: true
+      - id: moon-check-wasm
+        name: Check MoonBit (wasm)
+        entry: moon check --target wasm
+        language: system
+        files: '(^|/)(moon\.(mod|pkg)(\.json)?|[^/]+\.mbt(\.md)?)$'
+        pass_filenames: false
+        require_serial: true
+      - id: moon-test-wasm
+        name: Test MoonBit (wasm)
+        entry: moon test --target wasm
+        language: system
+        files: '(^|/)(moon\.(mod|pkg)(\.json)?|[^/]+\.mbt(\.md)?)$'
+        pass_filenames: false
+        require_serial: true
+      - id: moon-check-wasm-gc
+        name: Check MoonBit (wasm-gc)
+        entry: moon check --target wasm-gc
+        language: system
+        files: '(^|/)(moon\.(mod|pkg)(\.json)?|[^/]+\.mbt(\.md)?)$'
+        pass_filenames: false
+        require_serial: true
+      - id: moon-test-wasm-gc
+        name: Test MoonBit (wasm-gc)
+        entry: moon test --target wasm-gc
+        language: system
+        files: '(^|/)(moon\.(mod|pkg)(\.json)?|[^/]+\.mbt(\.md)?)$'
+        pass_filenames: false
+        require_serial: true

@@ -19,3 +19,19 @@
 现有 [编译器 ICE 调查记录](docs/ice-2-llvm-target-std-bundle.md)属于历史开发环境资料，不构成当前后端支持状态的证明。
 
 模块名暂保留 `seekmoon/octree`，许可证配置为 Apache-2.0。
+
+## 提交前验收
+
+安装 MoonBit 工具链与 prek（至少 0.4.9），首次克隆后执行：
+
+```sh
+prek install
+prek validate-config .pre-commit-config.yaml
+prek run --all-files
+```
+
+每次提交先完成改动对应的验收，暂存文件后执行 `prek run` 和 `git diff --cached --check`，复核暂存差异。Git 提交时也会通过已安装的钩子运行 prek。钩子安装是每个本地克隆的操作，不随仓库文件自动生效。
+
+配置使用 prek 内置文本检查和本机 MoonBit 命令，无需下载远端 hook 仓库。MoonBit 包源码或配置变更会触发格式化及 wasm、wasm-gc 的检查和测试；纯文档变更不触发这些编译检查。格式化如修改文件，需要复核、重新暂存并重跑。
+
+独立 `.mbtx` 调研脚本仅接受通用文本检查，不自动执行其网络或文件操作。公开 API 变化仍需额外运行 `moon info` 并复核生成接口；JS/native 验证、性能测量和其他契约验收按任务范围补充。当前项目没有测试用例，因此测试命令成功不代表已验证八叉树功能。

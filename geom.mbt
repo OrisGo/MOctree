@@ -8,10 +8,10 @@ pub struct Vec3 {
 
 ///|
 pub fn Vec3::new(x : Double, y : Double, z : Double) -> Vec3 {
-  { x, y, z }
+  { x, y, z, }
 }
 
 ///|
 pub fn Vec3::origin() -> Vec3 {
-  { x: 0.0, y: 0.0, z: 0.0 }
+  { x: 0.0, y: 0.0, z: 0.0, }
 }
