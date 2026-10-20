@@ -1,0 +1,69 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "seekmoon/octree/geom"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+pub(all) suberror GeometryError {
+  NonFinite(String)
+  InvertedBounds
+  InvalidRoot
+  ZeroDirection
+  InvalidInterval
+} derive(Eq, @debug.Debug)
+pub fn GeometryError::equal(Self, Self) -> Bool
+pub fn GeometryError::not_equal(Self, Self) -> Bool
+pub fn GeometryError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub struct Aabb {
+  min : Vec3
+  max : Vec3
+} derive(Eq, @debug.Debug)
+pub fn Aabb::contains(Self, Self) -> Bool
+pub fn Aabb::equal(Self, Self) -> Bool
+pub fn Aabb::intersects(Self, Self) -> Bool
+pub fn Aabb::new(Vec3, Vec3) -> Self raise GeometryError
+pub fn Aabb::not_equal(Self, Self) -> Bool
+pub fn Aabb::to_repr(Self) -> @debug.Repr
+
+pub struct Cube {
+  center : Vec3
+  half_extent : Double
+  bounds : Aabb
+} derive(Eq, @debug.Debug)
+pub fn Cube::equal(Self, Self) -> Bool
+pub fn Cube::new(Vec3, Double) -> Self raise GeometryError
+pub fn Cube::not_equal(Self, Self) -> Bool
+pub fn Cube::to_repr(Self) -> @debug.Repr
+
+pub struct Ray {
+  origin : Vec3
+  direction : Vec3
+  t_min : Double
+  t_max : Double
+} derive(Eq, @debug.Debug)
+pub fn Ray::equal(Self, Self) -> Bool
+pub fn Ray::intersects(Self, Aabb) -> Bool
+pub fn Ray::new(Vec3, Vec3, t_min~ : Double, t_max~ : Double) -> Self raise GeometryError
+pub fn Ray::not_equal(Self, Self) -> Bool
+pub fn Ray::to_repr(Self) -> @debug.Repr
+
+pub struct Vec3 {
+  x : Double
+  y : Double
+  z : Double
+} derive(Eq, @debug.Debug)
+pub fn Vec3::equal(Self, Self) -> Bool
+pub fn Vec3::new(Double, Double, Double) -> Self
+pub fn Vec3::not_equal(Self, Self) -> Bool
+pub fn Vec3::origin() -> Self
+pub fn Vec3::to_repr(Self) -> @debug.Repr
+
+// Type aliases
+
+// Traits

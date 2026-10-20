@@ -1,0 +1,116 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "seekmoon/octree/objects"
+
+import {
+  "moonbitlang/core/debug",
+  "seekmoon/octree/geom",
+}
+
+// Values
+pub fn scan_aabb(ArrayView[Entry], @geom.Aabb) -> Array[UInt32]
+
+pub fn scan_ray_candidates(ArrayView[Entry], @geom.Ray) -> Array[UInt32]
+
+// Errors
+pub(all) suberror BuildError {
+  InvalidConfig(String)
+  ObjectCapacityExceeded(limit~ : Int32, actual~ : Int32)
+  DuplicateId(position~ : Int32, id~ : UInt32)
+  OutsideRoot(position~ : Int32, id~ : UInt32)
+} derive(Eq, @debug.Debug)
+pub fn BuildError::equal(Self, Self) -> Bool
+pub fn BuildError::not_equal(Self, Self) -> Bool
+pub fn BuildError::to_repr(Self) -> @debug.Repr
+
+pub(all) suberror QueryError {
+  InvalidOutputRange
+  InsufficientWorkspace(required~ : Int32, available~ : Int32)
+  InvalidWorkspaceCapacity
+  InvalidNode
+  InvalidObjectOffset
+} derive(Eq, @debug.Debug)
+pub fn QueryError::equal(Self, Self) -> Bool
+pub fn QueryError::not_equal(Self, Self) -> Bool
+pub fn QueryError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) enum Completeness {
+  Complete
+  Truncated
+} derive(Eq, @debug.Debug)
+pub fn Completeness::equal(Self, Self) -> Bool
+pub fn Completeness::not_equal(Self, Self) -> Bool
+pub fn Completeness::to_repr(Self) -> @debug.Repr
+
+pub struct Entry {
+  id : UInt32
+  bounds : @geom.Aabb
+} derive(Eq, @debug.Debug)
+pub fn Entry::equal(Self, Self) -> Bool
+pub fn Entry::new(UInt32, @geom.Aabb) -> Self
+pub fn Entry::not_equal(Self, Self) -> Bool
+pub fn Entry::to_repr(Self) -> @debug.Repr
+
+pub struct IndexStats {
+  object_count : Int32
+  node_count : Int32
+  depth : Int32
+  max_objects : Int32
+  max_nodes : Int32
+  max_depth : Int32
+  split_threshold : Int32
+  object_capacity : Int32
+  node_capacity : Int32
+  order_capacity : Int32
+  workspace_required : Int32
+} derive(Eq, @debug.Debug)
+pub fn IndexStats::equal(Self, Self) -> Bool
+pub fn IndexStats::not_equal(Self, Self) -> Bool
+pub fn IndexStats::to_repr(Self) -> @debug.Repr
+
+pub struct NodeInfo {
+  id : Int32
+  bounds : @geom.Aabb
+  depth : Int32
+  octant : Int32
+  object_count : Int32
+  child_mask : UInt32
+} derive(Eq, @debug.Debug)
+pub fn NodeInfo::equal(Self, Self) -> Bool
+pub fn NodeInfo::not_equal(Self, Self) -> Bool
+pub fn NodeInfo::to_repr(Self) -> @debug.Repr
+
+pub struct QueryStats {
+  written : Int32
+  total_hits : Int32
+  completeness : Completeness
+  visited_nodes : Int32
+  tested_objects : Int32
+} derive(Eq, @debug.Debug)
+pub fn QueryStats::equal(Self, Self) -> Bool
+pub fn QueryStats::not_equal(Self, Self) -> Bool
+pub fn QueryStats::to_repr(Self) -> @debug.Repr
+
+pub struct StaticObjectIndex {
+  // private fields
+}
+pub fn StaticObjectIndex::build(ArrayView[Entry], root~ : @geom.Cube, max_objects~ : Int32, max_nodes~ : Int32, max_depth? : Int32, split_threshold? : Int32) -> Self raise BuildError
+pub fn StaticObjectIndex::node_info(Self, Int32) -> NodeInfo raise QueryError
+pub fn StaticObjectIndex::node_object_id(Self, Int32, Int32) -> UInt32 raise QueryError
+pub fn StaticObjectIndex::query_aabb(Self, @geom.Aabb) -> Array[UInt32]
+pub fn StaticObjectIndex::query_aabb_into(Self, @geom.Aabb, FixedArray[UInt32], Workspace, offset? : Int32, capacity? : Int32) -> QueryStats raise QueryError
+pub fn StaticObjectIndex::query_ray_candidates(Self, @geom.Ray) -> Array[UInt32]
+pub fn StaticObjectIndex::query_ray_candidates_into(Self, @geom.Ray, FixedArray[UInt32], Workspace, offset? : Int32, capacity? : Int32) -> QueryStats raise QueryError
+pub fn StaticObjectIndex::stats(Self) -> IndexStats
+pub fn StaticObjectIndex::visit(Self, Workspace, (NodeInfo) -> Bool) -> Unit raise QueryError
+pub fn StaticObjectIndex::workspace(Self) -> Workspace
+
+pub struct Workspace {
+  // private fields
+}
+pub fn Workspace::capacity(Self) -> Int32
+pub fn Workspace::new(Int32) -> Self raise QueryError
+
+// Type aliases
+
+// Traits

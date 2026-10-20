@@ -1,4 +1,8 @@
-// Package seekmoon/octree: a pure-MoonBit octree data structure.
-//
-// The library has no third-party dependencies, so it builds for every
-// backend (wasm, wasm-gc, js, native).
+import {
+  "seekmoon/octree/geom",
+  "seekmoon/octree/objects",
+}
+
+import {
+  "moonbitlang/core/double",
+} for "test"

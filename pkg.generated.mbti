@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "seekmoon/octree"
+
+import {
+  "seekmoon/octree/geom",
+  "seekmoon/octree/objects",
+}
+
+// Values
+pub fn scan_aabb(ArrayView[@objects.Entry], @geom.Aabb) -> Array[UInt32]
+
+pub fn scan_ray_candidates(ArrayView[@objects.Entry], @geom.Ray) -> Array[UInt32]
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @geom {type Aabb}
+
+pub using @objects {type BuildError}
+
+pub using @objects {type Completeness}
+
+pub using @geom {type Cube}
+
+pub using @objects {type Entry}
+
+pub using @geom {type GeometryError}
+
+pub using @objects {type IndexStats}
+
+pub using @objects {type NodeInfo}
+
+pub using @objects {type QueryError}
+
+pub using @objects {type QueryStats}
+
+pub using @geom {type Ray}
+
+pub using @objects {type StaticObjectIndex}
+
+pub using @geom {type Vec3}
+
+pub using @objects {type Workspace}
+
+// Traits
