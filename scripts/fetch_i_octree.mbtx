@@ -1,0 +1,86 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/gzip",
+  "moonbitlang/async/http",
+  "moonbitlang/async/io",
+  "moonbitlang/core/encoding/utf8",
+}
+
+///|
+fn cstr(b : Bytes, off : Int, len : Int) -> String {
+  let end = off + len
+  let mut i = off
+  while i < end && b[i].to_int() != 0 {
+    i += 1
+  }
+  @utf8.decode_lossy(b[off:i])
+}
+
+///|
+fn octal(b : Bytes, off : Int, len : Int) -> Int {
+  let end = off + len
+  let mut i = off
+  let mut v = 0
+  while i < end {
+    let c = b[i].to_int()
+    if c >= 48 && c <= 55 {
+      v = v * 8 + (c - 48)
+    }
+    i += 1
+  }
+  v
+}
+
+///|
+async fn main {
+  let root = "D:\\_Projects\\Octree\\.openseek\\sessions\\desktop-20261013-180036-236-722670829\\scratch\\refs\\i-octree"
+  @fs.mkdir(root, recursive=true)
+  let url = "https://codeload.github.com/zhujun3753/i-octree/tar.gz/refs/heads/main"
+  let (resp, client) = @http.get_stream(url)
+  println("http \{resp.code}")
+  let gz = client.read_all().binary()
+  client.close()
+  println("gz bytes = \{gz.length()}")
+  let mr = @io.MemoryReader::MemoryReader(async fn(w) {
+    w.write(gz)
+  })
+  let dec = @gzip.Decoder::Decoder(mr)
+  let tar = dec.read_all().binary()
+  println("tar bytes = \{tar.length()}")
+  let mut off = 0
+  let mut long_name = ""
+  let mut count = 0
+  while off + 512 <= tar.length() {
+    let raw_name = cstr(tar, off, 100)
+    if raw_name.is_empty() {
+      break
+    }
+    let size = octal(tar, off + 124, 12)
+    let typeflag = tar[off + 156].to_int()
+    let prefix = cstr(tar, off + 345, 155)
+    let mut full = if prefix.is_empty() {
+      raw_name
+    } else {
+      "\{prefix}/\{raw_name}"
+    }
+    if !long_name.is_empty() {
+      full = long_name
+      long_name = ""
+    }
+    let data_off = off + 512
+    if typeflag == 76 {
+      long_name = cstr(tar, data_off, size)
+    } else if typeflag == 48 || typeflag == 0 {
+      println("FILE \{full} (\{size})")
+      if size > 0 && size < 2000000 {
+        let rel = full.split("/").collect().join("__")
+        @fs.write_file("\{root}\\\{rel}", tar[data_off:data_off + size])
+        count += 1
+        ignore(rel)
+      }
+    }
+    off = data_off + ((size + 511) / 512) * 512
+  }
+  println("extracted \{count} files to \{root}")
+}

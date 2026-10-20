@@ -1,0 +1,18 @@
+# MoonBit build output and downloaded dependencies
+_build/
+target/
+.mooncakes/
+
+# Local agent sessions and scratch data
+.openseek/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+
+# Editor / operating system temporary files
+*.swp
+*~
+.DS_Store
+Thumbs.db
