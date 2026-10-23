@@ -1,4 +1,4 @@
-name = "seekmoon/octree"
+name = "orisgo/octree"
 
 version = "0.1.0"
 

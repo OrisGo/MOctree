@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "seekmoon/octree/objects"
+package "orisgo/octree/objects"
 
 import {
   "moonbitlang/core/debug",
-  "seekmoon/octree/geom",
+  "orisgo/octree/geom",
 }
 
 // Values

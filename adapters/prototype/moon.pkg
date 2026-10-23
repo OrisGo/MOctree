@@ -1,6 +1,6 @@
 import {
-  "seekmoon/octree/geom",
-  "seekmoon/octree/objects",
+  "orisgo/octree/geom",
+  "orisgo/octree/objects",
 }
 
 pkgtype(kind: "foreign_library")

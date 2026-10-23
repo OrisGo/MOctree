@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "seekmoon/octree/adapters/prototype"
+package "orisgo/octree/adapters/prototype"
 
 // Values
 pub fn add_aabb(Double, Double, Double, Double, Double, Double, Int32, Int32) -> Unit

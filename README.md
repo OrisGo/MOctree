@@ -28,7 +28,7 @@
 
 现有 [编译器 ICE 调查记录](docs/ice-2-llvm-target-std-bundle.md)属于历史开发环境资料，不构成当前后端支持状态的证明。
 
-模块名暂保留 `seekmoon/octree`，许可证配置为 Apache-2.0。
+模块名为 `orisgo/octree`，许可证配置为 Apache-2.0。依赖与包导入应使用此命名空间。
 
 ## 提交前验收
 
