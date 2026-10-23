@@ -12,6 +12,8 @@ pub using @objects {
   type NodeInfo,
   type BuildError,
   type QueryError,
+  type BatchQuery,
+  type BatchError,
   scan_aabb,
   scan_ray_candidates,
 }

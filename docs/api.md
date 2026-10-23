@@ -60,6 +60,28 @@ let report = index.query_aabb_into(
 
 索引不保留 output/workspace；调用者可在完成一次操作后复用。同一工作区不能同时用于遍历和回调内查询。
 
+## 纯 MoonBit 批量查询
+
+```moonbit
+let requests = [
+  @octree.BatchQuery::new(Ok(box), offset=0, capacity=32),
+  @octree.BatchQuery::new(Ok(box), offset=32, capacity=32),
+]
+let reports = index.query_aabb_batch_into(requests, output, workspace)
+// reports[i] 为 Ok(QueryStats) 或 Err(GeometryError)。
+```
+
+射线使用 `query_ray_candidates_batch_into` 和 `BatchQuery[Ray]`。
+每条请求显式指定 offset、capacity；返回报告数组顺序与输入相同。
+构造几何时捕获的 `GeometryError` 可以包装为 Err 传入，该项不写输出，其他项继续执行。
+结果不足仍计算准确 total_hits；不会借用其他请求的容量。
+
+所有区间在查询前统一校验，包含 Err 请求的区间。越界、非空区间重叠或非空批次
+工作区不足抛出 `BatchError`，输出不变。相邻区间和零容量区间合法；
+空批次可使用容量为零的工作区。输出未写部分保持原值。
+批次复用工作区，但分配区间排序临时数组和逐条报告数组；请求与缓冲均不被索引保留。
+这两个入口是纯 MoonBit API，JS/WASM 传输协议仍待实现。
+
 ## 只读遍历
 
 `index.visit(workspace, visitor)` 按前序 DFS 遍历，回调收到 NodeInfo，返回 true 继续、false 停止。

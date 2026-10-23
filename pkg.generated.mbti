@@ -18,6 +18,10 @@ pub fn scan_ray_candidates(ArrayView[@objects.Entry], @geom.Ray) -> Array[UInt32
 // Type aliases
 pub using @geom {type Aabb}
 
+pub using @objects {type BatchError}
+
+pub using @objects {type BatchQuery}
+
 pub using @objects {type BuildError}
 
 pub using @objects {type Completeness}

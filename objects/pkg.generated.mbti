@@ -12,6 +12,15 @@ pub fn scan_aabb(ArrayView[Entry], @geom.Aabb) -> Array[UInt32]
 pub fn scan_ray_candidates(ArrayView[Entry], @geom.Ray) -> Array[UInt32]
 
 // Errors
+pub(all) suberror BatchError {
+  InvalidOutputRange(position~ : Int32)
+  OverlappingOutputRanges(first~ : Int32, second~ : Int32)
+  InsufficientWorkspace(required~ : Int32, available~ : Int32)
+} derive(Eq, @debug.Debug)
+pub fn BatchError::equal(Self, Self) -> Bool
+pub fn BatchError::not_equal(Self, Self) -> Bool
+pub fn BatchError::to_repr(Self) -> @debug.Repr
+
 pub(all) suberror BuildError {
   InvalidConfig(String)
   ObjectCapacityExceeded(limit~ : Int32, actual~ : Int32)
@@ -34,6 +43,13 @@ pub fn QueryError::not_equal(Self, Self) -> Bool
 pub fn QueryError::to_repr(Self) -> @debug.Repr
 
 // Types and methods
+pub struct BatchQuery[T] {
+  query : Result[T, @geom.GeometryError]
+  offset : Int32
+  capacity : Int32
+}
+pub fn[T] BatchQuery::new(Result[T, @geom.GeometryError], offset~ : Int32, capacity~ : Int32) -> Self[T]
+
 pub(all) enum Completeness {
   Complete
   Truncated
@@ -98,8 +114,10 @@ pub fn StaticObjectIndex::build(ArrayView[Entry], root~ : @geom.Cube, max_object
 pub fn StaticObjectIndex::node_info(Self, Int32) -> NodeInfo raise QueryError
 pub fn StaticObjectIndex::node_object_id(Self, Int32, Int32) -> UInt32 raise QueryError
 pub fn StaticObjectIndex::query_aabb(Self, @geom.Aabb) -> Array[UInt32]
+pub fn StaticObjectIndex::query_aabb_batch_into(Self, ArrayView[BatchQuery[@geom.Aabb]], FixedArray[UInt32], Workspace) -> Array[Result[QueryStats, @geom.GeometryError]] raise BatchError
 pub fn StaticObjectIndex::query_aabb_into(Self, @geom.Aabb, FixedArray[UInt32], Workspace, offset? : Int32, capacity? : Int32) -> QueryStats raise QueryError
 pub fn StaticObjectIndex::query_ray_candidates(Self, @geom.Ray) -> Array[UInt32]
+pub fn StaticObjectIndex::query_ray_candidates_batch_into(Self, ArrayView[BatchQuery[@geom.Ray]], FixedArray[UInt32], Workspace) -> Array[Result[QueryStats, @geom.GeometryError]] raise BatchError
 pub fn StaticObjectIndex::query_ray_candidates_into(Self, @geom.Ray, FixedArray[UInt32], Workspace, offset? : Int32, capacity? : Int32) -> QueryStats raise QueryError
 pub fn StaticObjectIndex::stats(Self) -> IndexStats
 pub fn StaticObjectIndex::visit(Self, Workspace, (NodeInfo) -> Bool) -> Unit raise QueryError

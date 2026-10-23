@@ -89,13 +89,31 @@ NodeInfo 提供索引实例内的节点 ID、边界、深度、所属子区编�
 - total_hits：所有几何命中数。
 - written：实际写入所选输出区间的数量。
 
-## 6. 批量接口：语义已确认，实现留给 M2
+## 6. 批量接口：纯 MoonBit 已实现，宿主适配留给 M2
 
 - 每条查询使用调用者指定且互不重叠的输出区间。
 - 分别返回错误、数量和完整性；单条溢出不占用其他查询的容量。
 - 单条非法查询不阻止其他合法查询。
 - 批次整体偏移越界或输出区间重叠，在执行前报错。
 - JS/WASM 的具体编码、导出名称和缓冲生命周期协议在 M2 落实，不把内部布局作为稳定 ABI。
+
+2026-10-23：`query_aabb_batch_into` 和 `query_ray_candidates_batch_into` 接受
+`ArrayView[BatchQuery[Aabb]]` / `ArrayView[BatchQuery[Ray]]`。每项携带
+`Result[几何类型, GeometryError]` 及必填 offset、capacity，几何构造失败可捕获后作为 Err 传入。
+返回新分配的 `Array[Result[QueryStats, GeometryError]]`，顺序、长度与请求一致；
+Err 原样传回且不写其输出区间，Ok 的计数、统计和完整性与单条查询一致。
+
+执行前检查所有请求的区间（包括 Err 请求），越界返回带请求位置的
+`BatchError::InvalidOutputRange`；非空区间重叠返回带两项位置的
+`OverlappingOutputRanges`。区间是半开区间，首尾相邻合法；零容量区间不占空间，
+可位于其他区间内部或输出末尾。检查用减法避免 offset + capacity 溢出。
+非空批次工作区不足返回 `BatchError::InsufficientWorkspace`，即使所有请求均为 Err；
+空批次返回空数组，不要求工作区容量。上述批次错误均在任何输出写入前返回，
+不承诺多种批次错误之间的固定优先级。
+
+请求按输入顺序执行并复用同一工作区；不保留请求、输出或工作区。
+结果数组归调用者所有。区间检查使用临时数组排序（O(B log B) 时间、O(B) 临时元素，
+B 为批次数量），报告数组也占 O(B) 元素；不承诺批量接口零分配。
 
 ## 7. 后续扩展
 
