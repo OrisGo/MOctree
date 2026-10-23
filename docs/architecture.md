@@ -1,6 +1,6 @@
 # 结构设计
 
-状态：geom、objects 和根包入口已实现；其余目录和未来类型为规划示意。更新日期：2026-10-21。
+状态：geom、objects、根包入口及 adapters/prototype 实验原型已实现；其余目录和未来类型为规划示意。更新日期：2026-10-23。
 
 ## 1. 设计原则
 
@@ -134,3 +134,7 @@ StaticObjectIndex 已实现；DynamicObjectIndex、StaticPointIndex、DynamicPoi
 wasm 与 wasm-gc 可以使用不同的传输实现，但必须保持相同查询语义。单精度扩展时增加明确格式，而不是悄悄改变既有 Double 接口的含义。
 
 本轮不冻结二进制布局、导出函数名称、JS TypedArray 组合或内存句柄协议。
+
+2026-10-23：`adapters/prototype` 已实现双后端标量导出原型和 JS 包装器，
+验证输入复制、失败重建保留旧索引及独立结果副本。模块内复用纯 MoonBit 批量查询；
+传输仍逐项 staging，不作为最终高效批量 ABI。详见 [原型协议与验收](wasm-prototype.md)。

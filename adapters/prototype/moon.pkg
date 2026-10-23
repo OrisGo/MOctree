@@ -1,0 +1,8 @@
+import {
+  "seekmoon/octree/geom",
+  "seekmoon/octree/objects",
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "+wasm+wasm-gc"
