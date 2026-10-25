@@ -9,6 +9,8 @@
 
 另有 [连续视口/选框及 DFS 条目布局基准](browser/layout-README.md)，包含两轮基线/候选/STR 对照与射线回归。
 
+另有 [walkzzz 普通/松散 Octree 点数据对照](walkzzz/README.md)，统一输出点坐标并保留重复点多重性。
+
 ## 运行
 
 要求：项目当前 MoonBit 工具链、Node.js 22+（内置 WebSocket）、本机 Chrome/Chromium。

@@ -1,0 +1,12 @@
+import {
+  "orisgo/octree/geom",
+  "orisgo/octree/objects",
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "+wasm"
+
+options(
+  link: { "wasm": { "export-memory-name": "memory" } },
+)

@@ -1,0 +1,13 @@
+import {
+  "walkzzz/moon-geometry/base/core" @point,
+  "walkzzz/moon-geometry/spatial/octree" @oct,
+  "walkzzz/moon-geometry/spatial/loose_octree" @loose,
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "+wasm"
+
+options(
+  link: { "wasm": { "export-memory-name": "memory" } },
+)
