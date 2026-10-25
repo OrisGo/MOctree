@@ -1,0 +1,61 @@
+name: Browser
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Run full timing matrices (informational, no speed threshold)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+concurrency:
+  group: browser-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    name: Browser correctness
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CHROME_BIN: /usr/bin/google-chrome
+      FULL_MATRIX: ${{ github.event_name == 'workflow_dispatch' && inputs.full }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Record environment and build
+        shell: bash
+        run: |
+          mkdir -p _build/ci-logs
+          { moon --version; node --version; "$CHROME_BIN" --version; uname -a; } 2>&1 | tee _build/ci-logs/environment.log
+          moon -C benchmarks/profile update
+          moon -C benchmarks/strtree update
+          node benchmarks/browser/build.mjs 2>&1 | tee _build/ci-logs/build.log
+      - name: Backend and MoonFlame browser acceptance
+        shell: bash
+        run: |
+          args=(--quick)
+          if [[ "$FULL_MATRIX" == true ]]; then args=(); fi
+          node benchmarks/browser/run.mjs "${args[@]}" 2>&1 | tee _build/ci-logs/browser.log
+      - name: MoonSTRtree browser comparison
+        shell: bash
+        run: |
+          args=(--quick)
+          if [[ "$FULL_MATRIX" == true ]]; then args=(); fi
+          node benchmarks/browser/compare-run.mjs "${args[@]}" 2>&1 | tee _build/ci-logs/comparison.log
+      - name: Upload available diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            _build/ci-logs/
+            _build/browser-results/
+          if-no-files-found: warn
+          retention-days: 14

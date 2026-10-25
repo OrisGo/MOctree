@@ -1,0 +1,11 @@
+name: Setup validated toolchain
+description: Install checksum-pinned MoonBit, core, prek and actionlint on Linux x86_64
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: '22.23.1'
+    - name: Install isolated tools
+      shell: bash
+      run: python3 scripts/ci/install-tools.py "$RUNNER_TEMP/moctree-tools"

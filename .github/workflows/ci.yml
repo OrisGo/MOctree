@@ -1,0 +1,42 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: Core, adapters and package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Workflow and repository checks
+        run: |
+          actionlint -shellcheck=""
+          prek run --all-files
+          git diff --exit-code
+          node scripts/ci/check-files.mjs
+      - name: Build and test all supported adapter paths
+        run: node scripts/ci/validate.mjs
+      - name: Validate distribution and isolated consumer
+        run: python3 scripts/ci/package-smoke.py
+      - name: Ensure checks did not modify tracked files
+        run: git diff --exit-code
+      - name: Upload validated candidate package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: package-${{ github.sha }}
+          path: _build/publish/*.zip
+          if-no-files-found: error
+          retention-days: 14

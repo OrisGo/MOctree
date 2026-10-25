@@ -33,6 +33,7 @@ wasm-gc 块传输、受限设备验收、空间划分交互示例和完整算法
 - [接口契约](docs/contracts.md)：已确认并落实的第一阶段语义，以及后续阶段的契约边界。
 - [API 使用说明](docs/api.md)：构建、查询、缓冲和遍历的调用方法。
 - [第一阶段验收](docs/validation-m1.md)：测试矩阵、环境及未验证范围。
+- [CI 与发布准备](docs/ci.md)：合并检查、浏览器验收、手动完整基准及发布包边界。
 
 现有 [编译器 ICE 调查记录](docs/ice-2-llvm-target-std-bundle.md)属于历史开发环境资料，不构成当前后端支持状态的证明。
 
@@ -58,3 +59,8 @@ prek run --all-files
 [线性内存适配 debug/release 集成测试](docs/wasm-linear.md#复现与验收)，这些 Node 测试不在 hooks 中。
 浏览器基准和独立 MoonFlame 模块的修改还需执行 [各自验收](benchmarks/README.md#修改后的验收)。
 MoonSTRtree 对照桥需额外执行 [独立模块及 debug/release 集成验收](benchmarks/strtree/README.md#复现)。
+
+GitHub Actions 配置位于 `.github/workflows/ci.yml` 和 `browser.yml`，核心验收脚本位于 `scripts/ci/`。
+工作流推送到远端后才会运行；required checks 需在首次成功运行后由仓库管理员启用。
+CI 生成经过解包消费者验证的候选源码包，不自动发布。库归档通过 `.moonignore` 排除基准与开发资料，
+发布包说明见 [package-readme](docs/package-readme.md)。
