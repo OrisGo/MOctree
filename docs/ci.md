@@ -15,7 +15,7 @@
 
 根模块的格式、wasm/wasm-gc 检查与测试由现有 prek 配置执行，CI 不重复定义另一套检查。
 prek 后检查 Git 差异，避免工具自动修复文件后仍然将原提交判为通过。
-独立模块不由根 hooks 覆盖，`scripts/ci/validate.mjs` 显式执行其检查。
+独立模块不由根 hooks 覆盖，`scripts/ci/validate.mbtx` 显式执行其检查。
 STR 桥没有 MoonBit 单元测试；实际验收是 Node debug/release 集成和浏览器扫描对照，不把零测试计作测试通过。
 
 浏览器常规运行使用 `--quick`：原矩阵 36 组、70 项浏览器契约断言；STR 54 组、90 项共同域校验。
@@ -81,8 +81,9 @@ CI 还上传通过消费者检查的源码 ZIP，作为候选分发包；它不�
 ```sh
 actionlint -shellcheck=""
 prek run --all-files
-node scripts/ci/check-files.mjs
-node scripts/ci/validate.mjs
+moon fmt --check scripts/ci/check-files.mbtx scripts/ci/validate.mbtx
+moon run --deny-warn scripts/ci/check-files.mbtx
+moon run --deny-warn scripts/ci/validate.mbtx
 python3 scripts/ci/package-smoke.py
 node benchmarks/browser/build.mjs
 node benchmarks/browser/run.mjs --quick
@@ -93,6 +94,19 @@ git diff --exit-code
 actionlint 校验 Actions 语法与表达式；关闭其可选 shellcheck 集成以免依赖 runner 的额外工具版本，
 不是关闭工作流或实际 shell 步骤验收。工作流明确使用 bash，其默认 `-eo pipefail` 保留管道中失败状态。
 修改源码或工作流后按根 README 完成暂存、prek 和提交检查。
+
+## 自动化脚本逐步迁移
+
+第一步将仓库文件检查与适配层验收迁移为独立 `.mbtx`，格式依据
+[MoonBit 官方脚本模式文档](https://docs.moonbitlang.com/en/latest/toolchain/moon/script-mode.html)。
+在仓库根目录运行，脚本使用默认 wasm 后端，`moonbitlang/async` 固定为 `0.22.5`；
+首次运行需要下载依赖，CI 不依赖本机缓存。进程通过 `@shell.Cmd` 传入独立参数，失败即停止。
+CI 显式检查这两个脚本的格式，并以 `--deny-warn` 运行；根模块 hooks 不会自动检查独立脚本。
+检查范围保持不变，包括已跟踪 JS 语法、本地 Markdown 链接、独立模块、生成接口与适配层集成。
+
+工具链安装和发布包检查暂保留 Python，浏览器基准自动化暂保留 Node，后续分别迁移。
+安装器必须在 MoonBit 尚不可用时启动，需单独设计启动入口；浏览器宿主代码与 JS 包装器继续使用 JavaScript。
+本步不改变工作流触发条件、候选包上传和发布边界。
 
 ## 暂不实施
 

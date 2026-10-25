@@ -1,0 +1,72 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+  "moonbitlang/core/encoding/percent",
+}
+
+///|
+fn external_link(link : StringView) -> Bool {
+  if link.has_prefix("#") || link.has_prefix("/") {
+    return true
+  }
+  for i, c in link {
+    if c == ':' {
+      return i > 0
+    }
+    if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+      return false
+    }
+  }
+  false
+}
+
+///|
+async fn main {
+  let output = @shell.Cmd("git", ["ls-files", "-z"]).output()
+  output.check()
+  for file in output.stdout().split("\u0000") {
+    if file.is_empty() {
+      continue
+    }
+    if file.has_suffix(".mjs") {
+      @shell.Cmd(
+        "node",
+        ["--check", file.to_owned()],
+        stdout=Inherit,
+        stderr=Inherit,
+      ).run()
+    }
+    if file.has_suffix(".md") {
+      let parts = file.split("/").collect()
+      let directory = parts[:parts.length() - 1].to_owned().join("/")
+      let text = @fs.read_file(file).text()
+      // 与原检查器一致，仅识别 ](目标) 形式，忽略锚点和外部 URL。
+      for candidate in text.split("](").drop(1) {
+        let segments = candidate.split(")").collect()
+        if segments.length() < 2 {
+          continue
+        }
+        let raw = segments[0]
+        if raw.is_empty() || external_link(raw) {
+          continue
+        }
+        let link = raw.split("#").collect()[0]
+        if link.is_empty() {
+          continue
+        }
+        let decoded = @percent.decode(link)
+        let target = if decoded.has_prefix("/") || directory.is_empty() {
+          decoded
+        } else {
+          "\{directory}/\{decoded}"
+        }
+        if !@fs.exists(target) {
+          fail("Broken local link in \{file}: \{raw}")
+        }
+      }
+    }
+  }
+  println("Tracked JS syntax and local Markdown link targets passed")
+}

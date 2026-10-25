@@ -1,0 +1,72 @@
+///|
+import {
+  "moonbitlang/async@0.22.5",
+  "moonbitlang/async@0.22.5/fs",
+  "moonbitlang/async@0.22.5/shell",
+}
+
+///|
+async fn run(program : String, args : Array[String]) -> Unit {
+  @shell.Cmd(program, args, stdout=Inherit, stderr=Inherit).run()
+}
+
+///|
+async fn git(args : Array[String]) -> String {
+  let output = @shell.Cmd("git", args).output()
+  output.check()
+  output.stdout()
+}
+
+///|
+async fn main {
+  for project in ["benchmarks/profile", "benchmarks/strtree"] {
+    run("moon", ["-C", project, "update"])
+  }
+  // 根模块的格式、检查和测试由 prek 执行；嵌套模块独立验收。
+  for
+    (project, target) in [
+      ("benchmarks/profile", "js"),
+      ("benchmarks/strtree", "wasm"),
+    ] {
+    run("moon", ["-C", project, "fmt", "--check"])
+    run("moon", ["-C", project, "check", "--target", target, "--deny-warn"])
+  }
+  run("moon", [
+    "-C", "benchmarks/profile", "test", "--target", "js", "--deny-warn",
+  ])
+  let before : Map[String, Bytes] = Map([])
+  for path in git(["ls-files", "-z", "--", "*.mbti"]).split("\u0000") {
+    if !path.is_empty() {
+      before[path.to_owned()] = @fs.read_file(path).binary()
+    }
+  }
+  run("moon", ["info", "--target", "wasm"])
+  run("moon", ["-C", "benchmarks/profile", "info", "--target", "js"])
+  run("moon", ["-C", "benchmarks/strtree", "info", "--target", "wasm"])
+  for path, content in before {
+    if @fs.read_file(path).binary() != content {
+      fail("Generated interface is stale: \{path}")
+    }
+  }
+  let untracked = git([
+    "ls-files", "--others", "--exclude-standard", "--", "*.mbti",
+  ])
+  if !untracked.is_empty() {
+    fail("Untracked generated interfaces: \{untracked}")
+  }
+  for mode in ["debug", "release"] {
+    let flags = if mode == "release" { ["--release"] } else { [] }
+    run("moon", ["build", "adapters/linear", "--target", "wasm"] + flags)
+    for target in ["wasm", "wasm-gc"] {
+      run("moon", ["build", "adapters/prototype", "--target", target] + flags)
+    }
+    run(
+      "moon",
+      ["-C", "benchmarks/strtree", "build", "--target", "wasm"] + flags,
+    )
+    run("node", ["adapters/linear/integration.mjs", mode])
+    run("node", ["benchmarks/browser/compare-test.mjs", mode])
+  }
+  run("node", ["adapters/prototype/integration.mjs"])
+  run("node", ["benchmarks/browser/verify.mjs"])
+}

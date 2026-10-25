@@ -133,7 +133,9 @@ prek run --all-files
 
 配置使用 prek 内置文本检查和本机 MoonBit 命令，无需下载远端 hook 仓库。MoonBit 包源码或配置变更会触发格式化及 wasm、wasm-gc 的检查和测试；纯文档变更不触发这些编译检查。格式化如修改文件，需要复核、重新暂存并重跑。
 
-独立 `.mbtx` 调研脚本仅接受通用文本检查，不自动执行其网络或文件操作。公开 API 变化仍需额外运行 `moon info` 并复核生成接口；JS/native 验证、性能测量和其他契约验收按任务范围补充。
+独立 `.mbtx` 脚本在 hooks 中仅接受通用文本检查，不自动执行其网络或文件操作。
+CI 显式格式检查并运行 `scripts/ci/check-files.mbtx` 和 `scripts/ci/validate.mbtx`，本地修改这两个脚本时也需执行 [CI 文档中的对应命令](docs/ci.md#本地复现)。
+公开 API 变化仍需额外运行 `moon info` 并复核生成接口；JS/native 验证、性能测量和其他契约验收按任务范围补充。
 
 适配层变更还需执行 [双后端原型测试](docs/wasm-prototype.md#复现与验收)及
 [线性内存适配 debug/release 集成测试](docs/wasm-linear.md#复现与验收)，这些 Node 测试不在 hooks 中。
