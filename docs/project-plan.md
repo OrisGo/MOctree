@@ -54,6 +54,8 @@ WASM-first 是工程方向。动态 loose octree、Morton 排序和数值泛型�
 2026-10-25：新增 [浏览器验收与初始资源基准](../benchmarks/README.md)，覆盖桌面 Chrome、
 三档规模、三类分布，包含独立扫描对照、传输原型比较及 MoonFlame 调用栈分析。
 wasm-gc 块传输、完整内存峰值和受限设备验收仍待完成，M2 尚未整体验收。
+已完成 [MoonSTRtree 0.2.2 三维 AABB 对照](validation-strtree.md)：同一 WASM 宿主传输下的
+计数、限量与完整输出；网格、其他成熟实现及跨设备对照尚未实施。
 
 首版不做：
 

@@ -11,7 +11,8 @@ export async function serve(port=0) {
       const path=url.pathname==='/'?'/benchmarks/browser/index.html':decodeURIComponent(url.pathname);
       const allowed=path.startsWith('/benchmarks/browser/')||path.startsWith('/_build/browser-results/')||
         /^\/_build\/(?:profile\/)?(?:wasm|wasm-gc)\/release\/build\/adapters\/(?:linear|prototype)\/(?:linear|prototype)\.wasm$/.test(path)||
-        ['/adapters/linear/client.mjs','/adapters/prototype/client.mjs'].includes(path);
+        ['/adapters/linear/client.mjs','/adapters/prototype/client.mjs',
+          '/benchmarks/strtree/_build/wasm/release/build/strtree-benchmark.wasm'].includes(path);
       if(!allowed||!['GET','HEAD'].includes(req.method)){res.writeHead(404);res.end();return;}
       const file=await realpath(resolve(root,`.${path}`));
       if(!file.startsWith(root)){res.writeHead(403);res.end();return;}

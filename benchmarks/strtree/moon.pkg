@@ -1,0 +1,11 @@
+import {
+  "LING71671/moon_strtree" @strtree,
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "+wasm"
+
+options(
+  link: { "wasm": { "export-memory-name": "memory" } },
+)

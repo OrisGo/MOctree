@@ -148,3 +148,7 @@ debug/release 集成测试。wasm-gc 仍使用独立原型作对照，不声称�
 `benchmarks/browser` 在浏览器测量上述公开适配，独立 JS 扫描用于正确性及性能对照。
 `benchmarks/profile` 是独立 MoonBit 模块，使用 MoonFlame 渲染 Chrome 采集的折叠栈；
 此依赖不进入核心模块。资源探针和采样都与延迟计时分开，详见 [测量口径](../benchmarks/README.md)。
+
+`benchmarks/strtree` 为独立依赖模块，只通过 MoonSTRtree 0.2.2 的公开三维 AABB API 做对照。
+基准桥复用宿主传输形状，但不实现完整生产错误与预算协议；不得作为正式适配层对外承诺。
+三维完整结果分配、限量截取和 ID 映射均计入测量，见 [对照口径](../benchmarks/strtree/README.md)。

@@ -43,7 +43,17 @@ export async function launch(url) {
     };
     await send('Runtime.enable');await send('Page.enable');
     await send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
-    await evaluate(`new Promise((resolve,reject)=>{let n=0;const t=setInterval(()=>{if(window.octreeBench){clearInterval(t);resolve(true);}else if(n++>200){clearInterval(t);reject(new Error('benchmark page did not load'));}},50);})`);
+    // A newly created target may still be navigating and have no execution
+    // context. Retry only those navigation races; preserve actual page errors.
+    for(let attempt=0;;attempt++) {
+      try {
+        await evaluate(`new Promise((resolve,reject)=>{let n=0;const t=setInterval(()=>{if(window.octreeBench){clearInterval(t);resolve(true);}else if(n++>200){clearInterval(t);reject(new Error('benchmark page did not load'));}},50);})`);
+        break;
+      } catch(e) {
+        if(attempt>=30||!/Cannot find default execution context|Execution context was destroyed|Cannot find context/.test(e.message))throw e;
+        await new Promise(resolve=>setTimeout(resolve,100));
+      }
+    }
     return {send,evaluate,errors,args,close:async()=>{ws.close();await cleanup();}};
   } catch(e){await cleanup();throw e;}
 }

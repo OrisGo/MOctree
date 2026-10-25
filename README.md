@@ -22,6 +22,7 @@
 已增加 [浏览器验收与资源基准](benchmarks/README.md)，包含 1 千/1 万/10 万对象的查询对照、
 资源快照，以及 `moonflame@0.2.0` 渲染的 Chrome WASM 采样火焰图。
 本次实测结果与限制见 [浏览器验收报告](docs/validation-browser.md)。
+已完成 [MoonSTRtree 三维同语义对照](docs/validation-strtree.md)，覆盖计数、限量和完整 AABB 输出。
 wasm-gc 块传输、受限设备验收、空间划分交互示例和完整算法对照基准仍待完成。
 动态写入、单精度存储和点云索引仍属于后续路线。M2 尚未整体验收，第一阶段完成不代表首版已发布或已完成受限设备资源验收。
 
@@ -56,3 +57,4 @@ prek run --all-files
 适配层变更还需执行 [双后端原型测试](docs/wasm-prototype.md#复现与验收)及
 [线性内存适配 debug/release 集成测试](docs/wasm-linear.md#复现与验收)，这些 Node 测试不在 hooks 中。
 浏览器基准和独立 MoonFlame 模块的修改还需执行 [各自验收](benchmarks/README.md#修改后的验收)。
+MoonSTRtree 对照桥需额外执行 [独立模块及 debug/release 集成验收](benchmarks/strtree/README.md#复现)。
