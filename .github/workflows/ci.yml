@@ -21,6 +21,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
+      - name: Initialize MoonBit registry for standalone scripts
+        run: moon update
       - name: Workflow and repository checks
         run: |
           actionlint -shellcheck=""
