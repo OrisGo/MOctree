@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh"><meta charset="utf-8"><title>点索引对照</title>
+<h1>MOctree / walkzzz 点索引对照</h1><p id="status">就绪</p><pre id="result"></pre>
+<script type="module">
+import {runPoints} from './points.mjs';
+window.octreeBench={start:async options=>{
+  const result=await runPoints(options,s=>document.querySelector('#status').textContent=s);
+  document.querySelector('#status').textContent='完成';
+  document.querySelector('#result').textContent=JSON.stringify({rows:result.rows.length,acceptance:result.acceptance},null,2);
+  return result;
+}};
+</script></html>
