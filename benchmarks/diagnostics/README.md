@@ -6,7 +6,9 @@
 ## 热力图
 
 ```sh
+node benchmarks/diagnostics/heatmap-test.mjs
 node benchmarks/diagnostics/heatmap.mjs
+node benchmarks/diagnostics/heatmap-verify.mjs
 ```
 
 生成 `_build/browser-results/heatmap.html`，内嵌 12 份原始记录，可直接用浏览器打开。
@@ -14,7 +16,12 @@ node benchmarks/diagnostics/heatmap.mjs
 及点的 MOctree/普通/Loose Octree；不把旧 before 和射线数据放进 STR 排名。
 
 选择域、对照、轮次、分布和指标；点击单元格查看原始样本、p50/p95/p99、八批次命中与工作量。
-批次按原调度的 sampleIndex % 8 还原，逐批尾分位数仅有 12/13 个样本，不能作稳定尾延迟承诺。
+生成器按归档版本恢复样本对应的批次：历史 AABB `contiguous-layout-v1` 使用 `(sampleIndex + warmups) % 批次数`（本批记录 warmups=20）；新版 `contiguous-layout-v2` 和点数据 `walkzzz-points-v1` 读取归档调度。未知版本、缺失调度或非法批次明确报错。页面使用生成的 `sampleBatches` 元数据归组，不再统一按样本下标取模。
+
+2026-10-26 修复了旧 AABB 逐批延迟错位四个批次的问题。只重新生成展示页，不修改原始 JSON、整行分位数和 CPU profiles，也无需重跑性能实验。逐批尾分位数样本仍很少，不能作稳定尾延迟承诺。
+
+`heatmap-test.mjs` 覆盖旧版预热偏移、新版/点数据明确调度、非法来源与归档回归。`heatmap-verify.mjs` 单独启动真实 Chrome，检查 5,670 个单元格、90,720 组逐批分位数，并核对高命中批次与空批次的具体回归场景；它不依赖旧 profile 的源码或模块哈希，不触发性能计时。
+
 缺失 visited/tested 显示为 null，零命中时 tested/hits 为 null。倍率以 1 为中心、按 log2 着色，
 16 倍之外颜色饱和；绝对数值仍完整显示。没有业务权重和综合评分。
 
@@ -53,8 +60,8 @@ node benchmarks/diagnostics/verify.mjs benchmarks/results/<时间戳>-diagnostic
 finalize 仅为 CPU profile JSON 补齐仓库要求的末尾换行，并更新产物哈希；原始捕获字节哈希
 保留为 captureSha256，JSON 样本不变。重复运行不会再改变产物。
 在生成热力图并采集后执行，核对源码/模块/产物哈希、折叠栈、两轮坐标/工作统计，
-通过真实 Chrome 遍历 5,670 个筛选下的单元格详情。截图写入忽略目录。
-本命令验证当前源码；历史复现应使用对应提交及原模块，不修改原样本哈希。
+该历史脚本也检查页面详情身份与字段形状；逐批延迟的独立校验使用上文 `heatmap-verify.mjs`。截图写入忽略目录。
+`verify.mjs` 严格核对捕获时的源码和模块。旧 profile 应在对应测量提交及匹配模块中验证；当前展示修复后不可在本分支强行通过旧源码哈希检查，也不应修改原样本哈希或重新采样来掩盖这一差异。只修改热力图时运行上文三条命令即可验证新展示，另按下述要求完成通用验收。
 具体本轮结论和限制见 [诊断报告](../../docs/validation-diagnostics.md)。
 
 修改后还需执行根 README 的浏览器及独立模块验收、暂存后的 prek 和差异检查。
