@@ -41,6 +41,10 @@ Chrome 使用 Ubuntu runner 已安装的 `/usr/bin/google-chrome`，版本随镜
 保留 Chrome 沙箱及独立临时 profile。如果 runner 缺少 Chrome 或不能启动沙箱，任务应失败并报告，
 不得以关闭沙箱或跳过浏览器测试掩盖失败。固定浏览器版本和专用性能机器属于后续性能门禁工作。
 
+Chrome 主进程退出后，子进程仍可能短暂写入临时 profile。清理使用 Node `rm` 的有限重试
+（最多 10 次、100 ms 线性退避），处理 `ENOTEMPTY` 等可重试错误；重试耗尽仍报告失败。
+浏览器清理抛错时也会关闭本地 HTTP 服务，避免进程挂起。只删除本次 `mkdtemp` 创建的目录。
+
 不缓存 `_build` 或下载依赖目录；新 runner 必须真实构建。当前依赖规模较小，先以可复现性优先。
 所有外部 Actions 固定完整提交 SHA，默认 `contents: read`，checkout 不持久保存凭据。
 PR 使用 `pull_request`，不以高权限事件执行 PR 代码。

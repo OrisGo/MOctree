@@ -99,4 +99,7 @@ try {
     await writeFile(join(records,`${stamp}-chrome-linux.json`),JSON.stringify(result,null,2)+'\n',{flag:'wx'});
   }
   console.log(`PASS: ${output}/results.json`);
-} finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}
+} finally {
+  try {await browser?.close();}
+  finally {await new Promise(resolve=>server.close(resolve));}
+}
