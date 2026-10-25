@@ -12,7 +12,10 @@ export async function launch(url) {
   const cleanup=async()=>{
     if(child.exitCode===null&&child.signalCode===null){child.kill('SIGTERM');await new Promise(resolve=>{const timer=setTimeout(resolve,3000);child.once('exit',()=>{clearTimeout(timer);resolve();});});}
     // Only this invocation's mkdtemp profile is removed, never a user profile.
-    if(child.exitCode!==null||child.signalCode!==null)await rm(directory,{recursive:true,force:true});
+    // Chrome subprocesses can still finish profile writes after the main
+    // process exits. Retry transient ENOTEMPTY/EBUSY errors with a bounded
+    // backoff; persistent cleanup failures must still fail the run.
+    if(child.exitCode!==null||child.signalCode!==null)await rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:100});
   };
   try {
     const endpoint=await new Promise((resolve,reject)=>{
