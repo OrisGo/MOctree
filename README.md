@@ -28,6 +28,7 @@
 已归档 [子树实际内容边界实验](docs/validation-content-bounds.md)：两轮 Chrome 对照后，因构建、内存和完整输出代价未保留生产改动。
 已完成 [连续视口/选框负载与 DFS 条目布局实验](docs/validation-layout.md)，保留直接条目访问，记录完整输出收益及[射线顺序平衡复测](docs/validation-ray-order.md)。
 已完成 [walkzzz 点索引共同域对照](docs/validation-walkzzz.md)，与有体积 AABB 基准分开报告。
+整体取舍、动态更新边界及下一阶段热力图/火焰图定位任务见 [对比总结](docs/comparison-summary.md)。
 wasm-gc 块传输、受限设备验收、空间划分交互示例和完整算法对照基准仍待完成。
 动态写入、单精度存储和点云索引仍属于后续路线。M2 尚未整体验收，第一阶段完成不代表首版已发布或已完成受限设备资源验收。
 

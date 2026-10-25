@@ -3,6 +3,7 @@
 2026-10-25。从干净的 `36f569f` 创建 `codex/bench-walkzzz-points`。生产核心和已有适配接口未修改。
 固定 `walkzzz/moon-geometry@0.251.0`（MIT），比较普通 Octree、Loose Octree 与 MOctree 的零尺寸 AABB 适配。
 本实验不是有体积 AABB 对比，也不表示 MOctree 已新增生产点云功能。
+与 MoonSTRtree 的分域结论、动态更新边界及后续热力图/火焰图任务见 [对比总结](comparison-summary.md)。
 
 ## 结论
 
