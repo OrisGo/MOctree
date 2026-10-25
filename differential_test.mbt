@@ -218,3 +218,65 @@ test "fixed octant preorder and sparse mask" {
     assert_eq(octants[i + 1], i)
   }
 }
+
+///|
+test "contained subtrees match scan with zero limited exact and excess capacity" {
+  for kind in 0..<8 {
+    let entries = dataset(kind)
+    for budget in [1, 16, 4096] {
+      let tree = build(entries, max_nodes=budget, threshold=4)
+      let queries : Array[@octree.Aabb] = []
+      tree.visit(tree.workspace(), n => {
+        queries.push(n.bounds)
+        true
+      })
+      let workspace = tree.workspace()
+      for query in queries {
+        let expected = @octree.scan_aabb(entries, query)
+        for capacity in [0, 1, 7, expected.length(), entries.length() + 1] {
+          let output = FixedArray::make(capacity + 4, 999U)
+          let result = tree.query_aabb_into(
+            query,
+            output,
+            workspace,
+            offset=2,
+            capacity~,
+          )
+          assert_eq(result.total_hits, expected.length())
+          assert_eq(
+            result.written,
+            if capacity < expected.length() {
+              capacity
+            } else {
+              expected.length()
+            },
+          )
+          assert_eq(
+            result.completeness,
+            if result.written == expected.length() {
+              @octree.Completeness::Complete
+            } else {
+              @octree.Completeness::Truncated
+            },
+          )
+          let ids = Array::makei(result.written, i => output[2 + i])
+          for i in 0..<ids.length() {
+            assert_true(expected.contains(ids[i]))
+            for j in 0..<i {
+              assert_true(ids[i] != ids[j])
+            }
+          }
+          assert_eq(output[0], 999U)
+          assert_eq(output[1], 999U)
+          for i in (2 + result.written)..<output.length() {
+            assert_eq(output[i], 999U)
+          }
+          if query == root().bounds {
+            assert_eq(result.visited_nodes, 1)
+            assert_eq(result.tested_objects, 0)
+          }
+        }
+      }
+    }
+  }
+}

@@ -9,6 +9,7 @@ fn node(bounds : @geom.Aabb, depth : Int32, octant : Int32) -> Node {
     child_mask: 0U,
     start: 0,
     count: 0,
+    subtree_count: 0,
   }
 }
 
@@ -101,6 +102,8 @@ fn split(
   threshold : Int32,
 ) -> Unit {
   let current = nodes[index]
+  // DFS appends this entire subtree contiguously, starting at current.start.
+  current.subtree_count = items.length()
   let b = current.bounds
   let mid = @geom.Vec3::new(
     midpoint(b.min.x, b.max.x),
