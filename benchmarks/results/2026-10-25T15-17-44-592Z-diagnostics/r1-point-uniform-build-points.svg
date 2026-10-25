@@ -1,0 +1,283 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="1400" height="342" viewBox="0 0 1400 342" onload="init()">
+<defs>
+<linearGradient id="background" y1="0" y2="1" x1="0" x2="0">
+<stop stop-color="#eeeeee" offset="5%"/>
+<stop stop-color="#eeeeb0" offset="95%"/>
+</linearGradient>
+</defs>
+<style type="text/css">
+text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+#search, #ignorecase { opacity:0.1; cursor:pointer; }
+#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+#title { text-anchor:middle; font-size:17px }
+#unzoom { cursor:pointer; }
+#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+.hide { display:none; }
+.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript"><![CDATA[
+var XPAD = 10; var FONTSIZE = 12; var FONTWIDTH = 0.6; var INVERTED = false; var SEARCHCOLOR = "rgb(230,0,230)";
+"use strict";
+var SVG, FRAMES, DETAILS, SEARCHBTN, UNZBTN, MATCHED, ICBTN;
+var orig = [], searching = false, term = null, ignorecase = false;
+var canvasW = 0;
+function init() {
+  SVG = document.getElementsByTagName("svg")[0];
+  FRAMES = document.getElementById("frames").children;
+  DETAILS = document.getElementById("details").firstChild;
+  SEARCHBTN = document.getElementById("search");
+  UNZBTN = document.getElementById("unzoom");
+  MATCHED = document.getElementById("matched");
+  ICBTN = document.getElementById("ignorecase");
+  canvasW = SVG.width.baseVal.value;
+  for (var i = 0; i < FRAMES.length; i++) {
+    var r = rectOf(FRAMES[i]);
+    orig.push({x:num(r,"x"), y:num(r,"y"), w:num(r,"width"), fill:r.getAttribute("fill")});
+  }
+  wire();
+}
+function num(el, a) { return parseFloat(el.getAttribute(a)); }
+function rectOf(g) { return g.querySelector("rect"); }
+function textOf(g) { return g.querySelector("text"); }
+function nameOf(g) { return g.getAttribute("data-name") || ""; }
+function indexOf(g) { return Array.prototype.indexOf.call(FRAMES,g); }
+function groupOf(n) {
+  while(n && n.parentNode && n.parentNode.id !== "frames") n=n.parentNode;
+  return n && n.parentNode && n.parentNode.id === "frames" ? n : null;
+}
+function fitText(g,x,w) {
+  var t=textOf(g); if(!t) return;
+  var full=nameOf(g), room=w-6, chars=Math.floor(room/(FONTSIZE*FONTWIDTH));
+  var points=Array.from(full);
+  t.textContent=chars<2 ? "" : chars>=points.length ? full : points.slice(0,chars-2).join("")+"..";
+}
+function setGeom(g,x,w) {
+  var r=rectOf(g),t=textOf(g); r.setAttribute("x",x); r.setAttribute("width",w);
+  if(t) t.setAttribute("x",x+3); fitText(g,x,w);
+}
+function applyZoom(i) {
+  if(i<0 || orig[i].w<=0) return;
+  var base=orig[i], xmin=base.x, xmax=base.x+base.w;
+  var ratio=(canvasW-2*XPAD)/base.w, fudge=0.0001;
+  UNZBTN.classList.remove("hide");
+  for(var k=0;k<FRAMES.length;k++) {
+    var g=FRAMES[k],o=orig[k];
+    g.classList.remove("hide"); g.classList.remove("parent");
+    var ancestor=INVERTED ? o.y<base.y : o.y>base.y;
+    if(ancestor) {
+      if(o.x<=xmin+fudge && o.x+o.w+fudge>=xmax) {
+        g.classList.add("parent"); setGeom(g,XPAD,canvasW-2*XPAD);
+      } else g.classList.add("hide");
+    } else if(o.x<xmin-fudge || o.x+o.w>xmax+fudge) g.classList.add("hide");
+    else setGeom(g,(o.x-xmin)*ratio+XPAD,o.w*ratio);
+  }
+  if(term!==null) doSearch();
+}
+function resetZoom() {
+  UNZBTN.classList.add("hide");
+  for(var k=0;k<FRAMES.length;k++) {
+    FRAMES[k].classList.remove("hide"); FRAMES[k].classList.remove("parent");
+    setGeom(FRAMES[k],orig[k].x,orig[k].w);
+  }
+  if(term!==null) doSearch();
+}
+function clearHighlight() {
+  for(var k=0;k<FRAMES.length;k++) rectOf(FRAMES[k]).setAttribute("fill",orig[k].fill);
+}
+function doSearch() {
+  if(term===null) return;
+  clearHighlight();
+  searching=true; SEARCHBTN.classList.add("show"); SEARCHBTN.firstChild.nodeValue="Reset Search";
+  MATCHED.classList.remove("hide");
+  var re;
+  try { re=new RegExp(term,ignorecase?"i":""); }
+  catch(e) { MATCHED.firstChild.nodeValue="Invalid regular expression"; return; }
+  var spans=[];
+  for(var k=0;k<FRAMES.length;k++) {
+    var g=FRAMES[k];
+    if(g.classList.contains("hide") || g.classList.contains("parent")) continue;
+    if(re.test(nameOf(g))) {
+      var r=rectOf(g), x=num(r,"x"), right=x+num(r,"width");
+      rectOf(g).setAttribute("fill",SEARCHCOLOR);
+      spans.push({x:Math.max(XPAD,x),right:Math.min(canvasW-XPAD,right)});
+    }
+  }
+  spans.sort(function(a,b){return a.x-b.x || b.right-a.right;});
+  var count=0,end=XPAD;
+  for(var j=0;j<spans.length;j++) {
+    var s=spans[j];
+    if(s.right>end) { count+=s.right-Math.max(end,s.x); end=s.right; }
+  }
+  var pct=Math.max(0,Math.min(100,100*count/(canvasW-2*XPAD)));
+  MATCHED.firstChild.nodeValue="Matched: "+(pct===100?100:pct.toFixed(1))+"%";
+}
+function resetSearch() {
+  searching=false; term=null; clearHighlight(); SEARCHBTN.classList.remove("show");
+  SEARCHBTN.firstChild.nodeValue="Search"; MATCHED.classList.add("hide"); MATCHED.firstChild.nodeValue=" ";
+}
+function searchPrompt() {
+  if(searching) {resetSearch();return;}
+  var t=prompt("Enter a regular expression; Ctrl-I toggles case sensitivity","");
+  if(t===null) return; term=t;doSearch();
+}
+function toggleIgnoreCase() {
+  ignorecase=!ignorecase; ICBTN.classList.toggle("show",ignorecase);
+  if(term!==null) doSearch();
+}
+function wire() {
+  window.addEventListener("click",function(e){
+    if(e.target.id==="unzoom") {resetZoom();return;}
+    if(e.target.id==="search") {searchPrompt();return;}
+    if(e.target.id==="ignorecase") {toggleIgnoreCase();return;}
+    var g=groupOf(e.target);if(g) applyZoom(indexOf(g));
+  });
+  window.addEventListener("mouseover",function(e){var g=groupOf(e.target);if(g) DETAILS.nodeValue="Function: "+g.querySelector("title").textContent;});
+  window.addEventListener("mouseout",function(e){if(groupOf(e.target)) DETAILS.nodeValue=" ";});
+  window.addEventListener("keydown",function(e){
+    if(e.keyCode===114 || (e.ctrlKey && e.keyCode===70)){e.preventDefault();searchPrompt();}
+    else if(e.ctrlKey && e.keyCode===73){e.preventDefault();toggleIgnoreCase();}
+  });
+}
+]]></script>
+<rect x="0" y="0" width="1400" height="342" fill="url(#background)"/>
+<text id="title" x="700" y="24">Flame Graph</text>
+<text id="unzoom" x="10" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1290" y="24">Search</text>
+<text id="ignorecase" x="1374" y="24">ic</text>
+<text id="details" x="10" y="325"> </text>
+<text id="matched" x="1290" y="325"> </text>
+<g id="frames">
+<g data-name="(root)"><title>(root) — 1,326 (100.0%)</title><rect x="10" y="292" width="1380" height="15" fill="rgb(220,70,16)" rx="2" ry="2"/><text x="13" y="305">(root)</text></g>
+<g data-name="(anonymous)"><title>(anonymous) — 1,317 (99.3%)</title><rect x="10" y="276" width="1370.6" height="15" fill="rgb(223,87,20)" rx="2" ry="2"/><text x="13" y="289">(anonymous)</text></g>
+<g data-name="work [diagnostic-profile.mjs:24]"><title>work [diagnostic-profile.mjs:24] — 1,317 (99.3%)</title><rect x="10" y="260" width="1370.6" height="15" fill="rgb(233,130,31)" rx="2" ry="2"/><text x="13" y="273">work [diagnostic-profile.mjs:24]</text></g>
+<g data-name="build [points-client.mjs:11]"><title>build [points-client.mjs:11] — 1,317 (99.3%)</title><rect x="10" y="244" width="1370.6" height="15" fill="rgb(230,117,28)" rx="2" ry="2"/><text x="13" y="257">build [points-client.mjs:11]</text></g>
+<g data-name="js-to-wasm:ii:i"><title>js-to-wasm:ii:i — 1,317 (99.3%)</title><rect x="10" y="228" width="1370.6" height="15" fill="rgb(211,30,7)" rx="2" ry="2"/><text x="13" y="241">js-to-wasm:ii:i</text></g>
+<g data-name="_M0FP46orisgo6octree10benchmarks11pointbridge5build"><title>_M0FP46orisgo6octree10benchmarks11pointbridge5build — 1,316 (99.2%)</title><rect x="10" y="212" width="1369.6" height="15" fill="rgb(223,85,20)" rx="2" ry="2"/><text x="13" y="225">_M0FP46orisgo6octree10benchmarks11pointbridge5build</text></g>
+<g data-name="_M0MP36orisgo6octree7objects17StaticObjectIndex13build_2einner"><title>_M0MP36orisgo6octree7objects17StaticObjectIndex13build_2einner — 865 (65.2%)</title><rect x="10" y="196" width="900.2" height="15" fill="rgb(211,30,7)" rx="2" ry="2"/><text x="13" y="209">_M0MP36orisgo6octree7objects17StaticObjectIndex13build_2einner</text></g>
+<g data-name="_M0FP36orisgo6octree7objects5split"><title>_M0FP36orisgo6octree7objects5split — 537 (40.5%)</title><rect x="10" y="180" width="558.9" height="15" fill="rgb(233,131,31)" rx="2" ry="2"/><text x="13" y="193">_M0FP36orisgo6octree7objects5split</text></g>
+<g data-name="_M0FP36orisgo6octree7objects5split"><title>_M0FP36orisgo6octree7objects5split — 493 (37.2%)</title><rect x="10" y="164" width="513.1" height="15" fill="rgb(233,131,31)" rx="2" ry="2"/><text x="13" y="177">_M0FP36orisgo6octree7objects5split</text></g>
+<g data-name="_M0FP36orisgo6octree7objects5split"><title>_M0FP36orisgo6octree7objects5split — 355 (26.8%)</title><rect x="10" y="148" width="369.5" height="15" fill="rgb(233,131,31)" rx="2" ry="2"/><text x="13" y="161">_M0FP36orisgo6octree7objects5split</text></g>
+<g data-name="_M0FP36orisgo6octree7objects5split"><title>_M0FP36orisgo6octree7objects5split — 255 (19.2%)</title><rect x="10" y="132" width="265.4" height="15" fill="rgb(233,131,31)" rx="2" ry="2"/><text x="13" y="145">_M0FP36orisgo6octree7objects5split</text></g>
+<g data-name="_M0FP36orisgo6octree7objects5split"><title>_M0FP36orisgo6octree7objects5split — 170 (12.8%)</title><rect x="10" y="116" width="176.9" height="15" fill="rgb(233,131,31)" rx="2" ry="2"/><text x="13" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 68 (5.1%)</title><rect x="10" y="100" width="70.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="13" y="113">(self)</text></g>
+<g data-name="_M0FP36orisgo6octree7objects13child__bounds"><title>_M0FP36orisgo6octree7objects13child__bounds — 27 (2.0%)</title><rect x="80.8" y="100" width="28.1" height="15" fill="rgb(205,2,0)" rx="2" ry="2"/><text x="83.8" y="113"></text></g>
+<g data-name="_M0MP36orisgo6octree4geom4Aabb3new"><title>_M0MP36orisgo6octree4geom4Aabb3new — 10 (0.8%)</title><rect x="80.8" y="84" width="10.4" height="15" fill="rgb(212,32,7)" rx="2" ry="2"/><text x="83.8" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 5 (0.4%)</title><rect x="80.8" y="68" width="5.2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="83.8" y="81"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 3 (0.2%)</title><rect x="86" y="68" width="3.1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="89" y="81"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.1%)</title><rect x="89.1" y="68" width="1" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="92.1" y="81"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.1%)</title><rect x="90.1" y="68" width="1.1" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="93.1" y="81"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 9 (0.7%)</title><rect x="91.2" y="84" width="9.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="94.2" y="97"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 7 (0.5%)</title><rect x="100.5" y="84" width="7.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="103.5" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.1%)</title><rect x="107.8" y="84" width="1.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="110.8" y="97"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 22 (1.7%)</title><rect x="108.9" y="100" width="22.9" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="111.9" y="113"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 19 (1.4%)</title><rect x="108.9" y="84" width="19.7" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="111.9" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 7 (0.5%)</title><rect x="108.9" y="68" width="7.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="111.9" y="81"></text></g>
+<g data-name="moonbit.free"><title>moonbit.free — 7 (0.5%)</title><rect x="116.2" y="68" width="7.2" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="119.2" y="81"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 7 (0.5%)</title><rect x="116.2" y="52" width="7.2" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="119.2" y="65"></text></g>
+<g data-name="(self)"><title>(self) — 6 (0.5%)</title><rect x="116.2" y="36" width="6.2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="119.2" y="49"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.1%)</title><rect x="122.4" y="36" width="1" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="125.4" y="49"></text></g>
+<g data-name="moonbit.scan_regular_object"><title>moonbit.scan_regular_object — 3 (0.2%)</title><rect x="123.4" y="68" width="3.2" height="15" fill="rgb(212,36,8)" rx="2" ry="2"/><text x="126.4" y="81"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 2 (0.2%)</title><rect x="126.6" y="68" width="2" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="129.6" y="81"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.2%)</title><rect x="128.6" y="84" width="2.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="131.6" y="97"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.1%)</title><rect x="130.7" y="84" width="1.1" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="133.7" y="97"></text></g>
+<g data-name="_M0FP36orisgo6octree7objects4node"><title>_M0FP36orisgo6octree7objects4node — 18 (1.4%)</title><rect x="131.8" y="100" width="18.7" height="15" fill="rgb(205,2,0)" rx="2" ry="2"/><text x="134.8" y="113"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 9 (0.7%)</title><rect x="131.8" y="84" width="9.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="134.8" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 5 (0.4%)</title><rect x="141.1" y="84" width="5.2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="144.1" y="97"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 4 (0.3%)</title><rect x="146.3" y="84" width="4.2" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="149.3" y="97"></text></g>
+<g data-name="_M0FP36orisgo6octree7objects5split"><title>_M0FP36orisgo6octree7objects5split — 17 (1.3%)</title><rect x="150.5" y="100" width="17.7" height="15" fill="rgb(233,131,31)" rx="2" ry="2"/><text x="153.5" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 9 (0.7%)</title><rect x="150.5" y="84" width="9.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="153.5" y="97"></text></g>
+<g data-name="_M0MPC15array5Array6appendGiE"><title>_M0MPC15array5Array6appendGiE — 6 (0.5%)</title><rect x="159.9" y="84" width="6.2" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="162.9" y="97"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 2 (0.2%)</title><rect x="166.1" y="84" width="2.1" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="169.1" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.1%)</title><rect x="166.1" y="68" width="1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="169.1" y="81"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.1%)</title><rect x="167.1" y="68" width="1.1" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="170.1" y="81"></text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 7 (0.5%)</title><rect x="168.2" y="100" width="7.3" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="171.2" y="113"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 6 (0.5%)</title><rect x="168.2" y="84" width="6.2" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="171.2" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.2%)</title><rect x="168.2" y="68" width="3.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="171.2" y="81"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 3 (0.2%)</title><rect x="171.3" y="68" width="3.1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="174.3" y="81"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.1%)</title><rect x="174.4" y="84" width="1.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="177.4" y="97"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 3 (0.2%)</title><rect x="175.5" y="100" width="3.1" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="178.5" y="113"></text></g>
+<g data-name="_M0MPC15array5Array4pushGRP36orisgo6octree7objects4NodeE"><title>_M0MPC15array5Array4pushGRP36orisgo6octree7objects4NodeE — 3 (0.2%)</title><rect x="178.6" y="100" width="3.1" height="15" fill="rgb(243,176,42)" rx="2" ry="2"/><text x="181.6" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.2%)</title><rect x="178.6" y="84" width="2.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="181.6" y="97"></text></g>
+<g data-name="_M0MPC15array5Array7reallocGRP36orisgo6octree7objects4NodeE"><title>_M0MPC15array5Array7reallocGRP36orisgo6octree7objects4NodeE — 1 (0.1%)</title><rect x="180.7" y="84" width="1" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="183.7" y="97"></text></g>
+<g data-name="_M0MPC15array5Array14resize__bufferGRP36orisgo6octree7objects4NodeE"><title>_M0MPC15array5Array14resize__bufferGRP36orisgo6octree7objects4NodeE — 1 (0.1%)</title><rect x="180.7" y="68" width="1" height="15" fill="rgb(247,195,46)" rx="2" ry="2"/><text x="183.7" y="81"></text></g>
+<g data-name="_M0MPB18UninitializedArray23make__and__blit_2einnerGRP36orisgo6octree7objects4NodeE"><title>_M0MPB18UninitializedArray23make__and__blit_2einnerGRP36orisgo6octree7objects4NodeE — 1 (0.1%)</title><rect x="180.7" y="52" width="1" height="15" fill="rgb(216,52,12)" rx="2" ry="2"/><text x="183.7" y="65"></text></g>
+<g data-name="moonbit.ref_array_make_with_blit"><title>moonbit.ref_array_make_with_blit — 1 (0.1%)</title><rect x="180.7" y="36" width="1" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="183.7" y="49"></text></g>
+<g data-name="moonbit.get_ref_cnt"><title>moonbit.get_ref_cnt — 2 (0.2%)</title><rect x="181.7" y="100" width="2.1" height="15" fill="rgb(215,46,11)" rx="2" ry="2"/><text x="184.7" y="113"></text></g>
+<g data-name="moonbit.raw_rc"><title>moonbit.raw_rc — 2 (0.2%)</title><rect x="181.7" y="84" width="2.1" height="15" fill="rgb(235,140,33)" rx="2" ry="2"/><text x="184.7" y="97"></text></g>
+<g data-name="moonbit.free"><title>moonbit.free — 1 (0.1%)</title><rect x="183.8" y="100" width="1" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="186.8" y="113"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.1%)</title><rect x="183.8" y="84" width="1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="186.8" y="97"></text></g>
+<g data-name="moonbit.incref"><title>moonbit.incref — 1 (0.1%)</title><rect x="184.8" y="100" width="1.1" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="187.8" y="113"></text></g>
+<g data-name="_M0MPC15array5Array6appendGiE"><title>_M0MPC15array5Array6appendGiE — 1 (0.1%)</title><rect x="185.9" y="100" width="1" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="188.9" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 70 (5.3%)</title><rect x="186.9" y="116" width="72.9" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="189.9" y="129">(self)</text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 5 (0.4%)</title><rect x="259.8" y="116" width="5.2" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="262.8" y="129"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 4 (0.3%)</title><rect x="259.8" y="100" width="4.1" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="262.8" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.2%)</title><rect x="259.8" y="84" width="3.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="262.8" y="97"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.1%)</title><rect x="262.9" y="84" width="1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="265.9" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.1%)</title><rect x="263.9" y="100" width="1.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="266.9" y="113"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 3 (0.2%)</title><rect x="265" y="116" width="3.1" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="268" y="129"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.2%)</title><rect x="265" y="100" width="2.1" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="268" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.1%)</title><rect x="265" y="84" width="1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="268" y="97"></text></g>
+<g data-name="moonbit.free"><title>moonbit.free — 1 (0.1%)</title><rect x="266" y="84" width="1.1" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="269" y="97"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.1%)</title><rect x="266" y="68" width="1.1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="269" y="81"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.1%)</title><rect x="267.1" y="100" width="1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="270.1" y="113"></text></g>
+<g data-name="_M0FP36orisgo6octree7objects13child__bounds"><title>_M0FP36orisgo6octree7objects13child__bounds — 3 (0.2%)</title><rect x="268.1" y="116" width="3.1" height="15" fill="rgb(205,2,0)" rx="2" ry="2"/><text x="271.1" y="129"></text></g>
+<g data-name="_M0MP36orisgo6octree4geom4Aabb3new"><title>_M0MP36orisgo6octree4geom4Aabb3new — 2 (0.2%)</title><rect x="268.1" y="100" width="2.1" height="15" fill="rgb(212,32,7)" rx="2" ry="2"/><text x="271.1" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.1%)</title><rect x="268.1" y="84" width="1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="271.1" y="97"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.1%)</title><rect x="269.1" y="84" width="1.1" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="272.1" y="97"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.1%)</title><rect x="270.2" y="100" width="1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="273.2" y="113"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.1%)</title><rect x="271.2" y="116" width="1.1" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="274.2" y="129"></text></g>
+<g data-name="moonbit.set_object_kind"><title>moonbit.set_object_kind — 1 (0.1%)</title><rect x="272.3" y="116" width="1" height="15" fill="rgb(232,126,30)" rx="2" ry="2"/><text x="275.3" y="129"></text></g>
+<g data-name="_M0FP36orisgo6octree7objects4node"><title>_M0FP36orisgo6octree7objects4node — 1 (0.1%)</title><rect x="273.3" y="116" width="1" height="15" fill="rgb(205,2,0)" rx="2" ry="2"/><text x="276.3" y="129"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.1%)</title><rect x="273.3" y="100" width="1" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="276.3" y="113"></text></g>
+<g data-name="_M0MPC15array5Array4pushGRP36orisgo6octree7objects4NodeE"><title>_M0MPC15array5Array4pushGRP36orisgo6octree7objects4NodeE — 1 (0.1%)</title><rect x="274.3" y="116" width="1.1" height="15" fill="rgb(243,176,42)" rx="2" ry="2"/><text x="277.3" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 91 (6.9%)</title><rect x="275.4" y="132" width="94.7" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="278.4" y="145">(self)</text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 4 (0.3%)</title><rect x="370.1" y="132" width="4.2" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="373.1" y="145"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 4 (0.3%)</title><rect x="370.1" y="116" width="4.2" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="373.1" y="129"></text></g>
+<g data-name="moonbit.free"><title>moonbit.free — 1 (0.1%)</title><rect x="374.3" y="132" width="1" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="377.3" y="145"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.1%)</title><rect x="374.3" y="116" width="1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="377.3" y="129"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 1 (0.1%)</title><rect x="375.3" y="132" width="1" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="378.3" y="145"></text></g>
+<g data-name="moonbit.incref"><title>moonbit.incref — 1 (0.1%)</title><rect x="376.3" y="132" width="1.1" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="379.3" y="145"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.1%)</title><rect x="377.4" y="132" width="1" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="380.4" y="145"></text></g>
+<g data-name="_M0FP36orisgo6octree7objects13child__bounds"><title>_M0FP36orisgo6octree7objects13child__bounds — 1 (0.1%)</title><rect x="378.4" y="132" width="1.1" height="15" fill="rgb(205,2,0)" rx="2" ry="2"/><text x="381.4" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 136 (10.3%)</title><rect x="379.5" y="148" width="141.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="382.5" y="161">(self)</text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.1%)</title><rect x="521" y="148" width="1" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="524" y="161"></text></g>
+<g data-name="_M0FP36orisgo6octree7objects13child__bounds"><title>_M0FP36orisgo6octree7objects13child__bounds — 1 (0.1%)</title><rect x="522" y="148" width="1.1" height="15" fill="rgb(205,2,0)" rx="2" ry="2"/><text x="525" y="161"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.1%)</title><rect x="522" y="132" width="1.1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="525" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 44 (3.3%)</title><rect x="523.1" y="164" width="45.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="526.1" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 176 (13.3%)</title><rect x="568.9" y="180" width="183.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="571.9" y="193">(self)</text></g>
+<g data-name="moonbit.incref"><title>moonbit.incref — 68 (5.1%)</title><rect x="752" y="180" width="70.8" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="755" y="193"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 63 (4.8%)</title><rect x="822.8" y="180" width="65.6" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="825.8" y="193"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 63 (4.8%)</title><rect x="822.8" y="164" width="65.6" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="825.8" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 52 (3.9%)</title><rect x="822.8" y="148" width="54.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="825.8" y="161">(self)</text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 11 (0.8%)</title><rect x="876.9" y="148" width="11.5" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="879.9" y="161"></text></g>
+<g data-name="_M0MPC15array9ArrayView9to__ownedGRP36orisgo6octree7objects5EntryE"><title>_M0MPC15array9ArrayView9to__ownedGRP36orisgo6octree7objects5EntryE — 16 (1.2%)</title><rect x="888.4" y="180" width="16.6" height="15" fill="rgb(224,91,21)" rx="2" ry="2"/><text x="891.4" y="193"></text></g>
+<g data-name="_M0MPC15array9ArrayView23copy__or__reuse__bufferGRP36orisgo6octree7objects5EntryE"><title>_M0MPC15array9ArrayView23copy__or__reuse__bufferGRP36orisgo6octree7objects5EntryE — 16 (1.2%)</title><rect x="888.4" y="164" width="16.6" height="15" fill="rgb(246,190,45)" rx="2" ry="2"/><text x="891.4" y="177"></text></g>
+<g data-name="moonbit.ref_array_make_with_blit"><title>moonbit.ref_array_make_with_blit — 16 (1.2%)</title><rect x="888.4" y="148" width="16.6" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="891.4" y="161"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 5 (0.4%)</title><rect x="905" y="180" width="5.2" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="908" y="193"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 348 (26.2%)</title><rect x="910.2" y="196" width="362.2" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="913.2" y="209">moonbit.decref</text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 344 (25.9%)</title><rect x="910.2" y="180" width="358" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="913.2" y="193">moonbit.gc.free</text></g>
+<g data-name="(self)"><title>(self) — 242 (18.3%)</title><rect x="910.2" y="164" width="251.9" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="913.2" y="177">(self)</text></g>
+<g data-name="moonbit.free"><title>moonbit.free — 83 (6.3%)</title><rect x="1162.1" y="164" width="86.4" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="1165.1" y="177"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 75 (5.7%)</title><rect x="1162.1" y="148" width="78" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1165.1" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 63 (4.8%)</title><rect x="1162.1" y="132" width="65.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1165.1" y="145">(self)</text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 12 (0.9%)</title><rect x="1227.6" y="132" width="12.5" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1230.6" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 8 (0.6%)</title><rect x="1240.1" y="148" width="8.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1243.1" y="161"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 18 (1.4%)</title><rect x="1248.5" y="164" width="18.7" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1251.5" y="177"></text></g>
+<g data-name="moonbit.scan_regular_object"><title>moonbit.scan_regular_object — 1 (0.1%)</title><rect x="1267.2" y="164" width="1" height="15" fill="rgb(212,36,8)" rx="2" ry="2"/><text x="1270.2" y="177"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 3 (0.2%)</title><rect x="1268.2" y="180" width="3.2" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1271.2" y="193"></text></g>
+<g data-name="moonbit.free"><title>moonbit.free — 1 (0.1%)</title><rect x="1271.4" y="180" width="1" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="1274.4" y="193"></text></g>
+<g data-name="(self)"><title>(self) — 58 (4.4%)</title><rect x="1272.4" y="196" width="60.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1275.4" y="209">(self)</text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 26 (2.0%)</title><rect x="1332.8" y="196" width="27" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1335.8" y="209"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 10 (0.8%)</title><rect x="1359.8" y="196" width="10.4" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1362.8" y="209"></text></g>
+<g data-name="moonbit.float_array_make"><title>moonbit.float_array_make — 5 (0.4%)</title><rect x="1370.2" y="196" width="5.2" height="15" fill="rgb(247,196,47)" rx="2" ry="2"/><text x="1373.2" y="209"></text></g>
+<g data-name="_M0FP46orisgo6octree10benchmarks11pointbridge5input"><title>_M0FP46orisgo6octree10benchmarks11pointbridge5input — 4 (0.3%)</title><rect x="1375.4" y="196" width="4.2" height="15" fill="rgb(216,54,13)" rx="2" ry="2"/><text x="1378.4" y="209"></text></g>
+<g data-name="wasm-to-js"><title>wasm-to-js — 4 (0.3%)</title><rect x="1375.4" y="180" width="4.2" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1378.4" y="193"></text></g>
+<g data-name="input [points-client.mjs:5]"><title>input [points-client.mjs:5] — 4 (0.3%)</title><rect x="1375.4" y="164" width="4.2" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1378.4" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.1%)</title><rect x="1379.6" y="212" width="1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1382.6" y="225"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 3 (0.2%)</title><rect x="1380.6" y="276" width="3.2" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1383.6" y="289"></text></g>
+<g data-name="(idle)"><title>(idle) — 2 (0.2%)</title><rect x="1383.8" y="276" width="2" height="15" fill="rgb(215,50,11)" rx="2" ry="2"/><text x="1386.8" y="289"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 2 (0.2%)</title><rect x="1385.8" y="276" width="2.1" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1388.8" y="289"></text></g>
+<g data-name="(program)"><title>(program) — 1 (0.1%)</title><rect x="1387.9" y="276" width="1.1" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="1390.9" y="289"></text></g>
+<g data-name="moonbit.incref"><title>moonbit.incref — 1 (0.1%)</title><rect x="1389" y="276" width="1" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="1392" y="289"></text></g>
+</g>
+</svg>

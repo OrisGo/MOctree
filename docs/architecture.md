@@ -1,6 +1,6 @@
 # 结构设计
 
-状态：geom、objects、根包入口、adapters/prototype 实验原型及 adapters/linear 的 wasm 批量适配已实现；其余目录和未来类型为规划示意。更新日期：2026-10-25。
+状态：geom、objects、根包入口及两类适配已实现；动态索引和点云类型为规划。文档整理日期：2026-10-26，实验日期按各节记录保留。
 
 ## 1. 设计原则
 
@@ -8,25 +8,26 @@
 
 首版只创建实际需要的包，不创建空的未来实现，不提前设计一个覆盖所有场景的万能 `Octree[T]`。
 
-## 2. 目标目录与职责
+## 2. 当前目录与职责
 
 ```text
-Octree/
+MOctree/
 ├── moon.mod
 ├── moon.pkg
-├── geom/                    # 公开几何类型和谓词
-├── objects/                 # 首版：静态 AABB 对象索引
-│   └── dynamic/             # 后续：动态对象索引
-├── points/                  # 后续：静态点云索引
-│   └── dynamic/             # 后续：动态点云索引
-├── internal/                # 实际证明可共享的私有基础设施
-├── adapters/                # JS/WASM 宿主接口与缓冲管理
-├── examples/
-├── benchmarks/
-└── docs/
+├── api.mbt                  # 根包公开导出
+├── geom/                    # MoonBit 几何类型和谓词
+├── objects/                 # MoonBit 静态 AABB 对象索引
+├── adapters/
+│   ├── linear/              # wasm 批量桥接、JS 包装器与集成测试
+│   └── prototype/           # 后端语义对照原型
+├── benchmarks/              # 对照模块、浏览器驱动与诊断工具
+├── scripts/ci/              # 仓库验收辅助脚本
+└── docs/                    # 使用说明、设计与实验记录
 ```
 
-目录树表示职责划分，不是完整的 MoonBit 配置清单。创建包时再补齐相应包配置与目标设置。
+核心不依赖 JavaScript。适配层的 JS 负责模块加载、宿主数组校验、数据传输和错误转换；浏览器基准中的 JS 负责调度、独立扫描校验与测量。基准中的对照实现和诊断依赖不进入核心模块。
+
+下表同时列出已实现边界与规划职责。`objects/dynamic`、`points`、`points/dynamic` 和 `internal` 是设计保留位置，尚未创建；示例目录也不代表已有交互示例。
 
 | 边界 | 所有的职责 | 不承担的职责 |
 |---|---|---|

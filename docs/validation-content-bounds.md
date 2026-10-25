@@ -34,7 +34,7 @@ O(N+M) 时间，不重扫每层整棵子树、不增加对象副本或排序数�
 自底向上汇总优于每节点重扫子树的 O(N×深度) 方案，但仍不是无成本构建。
 没有把内容边界覆盖到公开单元边界，也没有引入动态写入或点云。
 
-[候选源码及专用测试补丁](../benchmarks/content-bounds/experiment.patch)可从最终 checkout 应用；
+[候选源码及专用测试补丁](../benchmarks/content-bounds/experiment.patch)须从本实验归档提交 `2b9bb52` 的独立 checkout 应用，不能套用在当前布局版本；
 已在独立临时目录重放并核对测量源码哈希。最终生产 release wasm 与测量 before 模块逐字节一致。
 [复现步骤、矩阵和口径](../benchmarks/browser/content-README.md)要求先保存基线模块，再应用补丁。
 普通 checkout 不包含内容边界功能。

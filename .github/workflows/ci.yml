@@ -26,9 +26,10 @@ jobs:
           actionlint -shellcheck=""
           prek run --all-files
           git diff --exit-code
-          node scripts/ci/check-files.mjs
+          moon fmt --check scripts/ci/check-files.mbtx scripts/ci/validate.mbtx
+          moon run --deny-warn scripts/ci/check-files.mbtx
       - name: Build and test all supported adapter paths
-        run: node scripts/ci/validate.mjs
+        run: moon run --deny-warn scripts/ci/validate.mbtx
       - name: Validate distribution and isolated consumer
         run: python3 scripts/ci/package-smoke.py
       - name: Ensure checks did not modify tracked files

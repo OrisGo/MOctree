@@ -1,0 +1,11 @@
+(root);(anonymous);work [diagnostic-profile.mjs:24] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0FP46orisgo6octree8adapters6linear11output__i32;wasm-to-js;output_i32 [client.mjs:77] 2
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0FP46orisgo6octree8adapters6linear11output__i32;wasm-to-js;output_i32 [client.mjs:77];view [client.mjs:59] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0FP46orisgo6octree8adapters6linear11output__u32;wasm-to-js;output_u32 [client.mjs:73] 167
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0FP46orisgo6octree8adapters6linear3vec 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0MP36orisgo6octree7objects17StaticObjectIndex24query__aabb__batch__into;_M0MP36orisgo6octree7objects17StaticObjectIndex10run__batchGRP36orisgo6octree4geom4AabbE;_M0MP36orisgo6octree7objects17StaticObjectIndex10run__query 1291
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0MP36orisgo6octree7objects17StaticObjectIndex24query__aabb__batch__into;_M0MP36orisgo6octree7objects17StaticObjectIndex10run__batchGRP36orisgo6octree4geom4AabbE;moonbit.gc.malloc;moonbit.malloc_no_grow 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;moonbit.i32_array_make 14
+(root);(garbage collector) 2
+(root);(idle) 1
+(root);(program) 2

@@ -1,0 +1,32 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>MOctree 性能诊断矩阵</title>
+<style>body{font:15px system-ui;max-width:1500px;margin:32px auto;padding:0 24px;color:#162c40;background:#f6f8fb}h1{font-size:28px}label{display:inline-block;margin:8px}select{padding:8px;border:1px solid #acbdcc;border-radius:5px}table{border-collapse:collapse;width:100%;background:white}td,th{border:1px solid #c9d4df;padding:10px;text-align:center}th{background:#e8eef4}button{border:0;background:transparent;color:inherit;cursor:pointer;font:inherit;width:100%}small{display:block;font-size:11px;margin-top:4px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:white;padding:20px;max-height:520px;overflow:auto}p{line-height:1.6}.scroll{overflow:auto}</style>
+<h1>MOctree · 浏览器性能诊断</h1><p>AABB 与点共同域分开，两轮独立展示。倍率 = MOctree / 对照；蓝色较快，红色较慢，白色约 1。色阶按 log₂ 对称，超过 16 倍饱和，数字保留实际倍率。这里没有综合排名。</p>
+<label>共同域 <select id="domain"><option value="aabb">AABB / MoonSTRtree</option><option value="points">点 / walkzzz</option></select></label>
+<label>对照 <select id="peer"></select></label><label>轮次 <select id="round"><option>1</option><option>2</option></select></label>
+<label>分布 <select id="distribution"></select></label><label>指标 <select id="metric"><option value="p50">p50 倍率</option><option value="p95">p95 倍率</option><option value="p99">p99 倍率</option><option value="tested">MOctree 对象测试 / 批</option><option value="visited">MOctree 节点访问 / 批</option><option value="hits">MOctree 命中 / 批</option><option value="written">MOctree 写入 / 批</option></select></label>
+<p id="note"></p><div class="scroll"><table id="matrix"></table></div>
+<h2>单元格证据</h2><p>点击格子查看两方分位数、原始样本、八批次工作量及逐批延迟。空命中、缺失统计不当作零成本。逐批 p95/p99 样本较少，仅作诊断。</p><pre id="detail">请选择单元格。</pre>
+<h2>构建与资源（独立展示）</h2><p>线性容量含保留和临时分配，不是活跃堆或 RSS。点模块含适配成本；all 即使少命中也复制预留槽位。</p><pre id="resources"></pre>
+<script>
+const records=/*DATA*/;
+const $=id=>document.getElementById(id),fmt=n=>n==null?'未提供':Number(n).toFixed(3),mean=a=>a.reduce((s,n)=>s+n,0)/a.length;
+const q=a=>{a=[...a].sort((a,b)=>a-b);return {samples:a.length,p50:a[Math.ceil(a.length*.5)-1],p95:a[Math.ceil(a.length*.95)-1],p99:a[Math.ceil(a.length*.99)-1]};};
+function stats(row,domain){return row.perBatch.map(b=>domain==='aabb'?{hits:b.totalHits,written:b.written,visited:b.visitedNodes,tested:b.testedObjects}:Object.fromEntries(['hits','written','visited','tested'].map(k=>{const field=k==='hits'?'total':k;return [k,b.some(x=>x[field]==null)?null:b.reduce((s,x)=>s+x[field],0)];})));}
+function setup(){const point=$('domain').value==='points';$('peer').innerHTML=point?'<option value="octree">普通 Octree</option><option value="loose">Loose Octree</option>':'<option value="strtree">MoonSTRtree 0.2.2</option>';$('distribution').innerHTML=(point?['uniform','cluster','duplicates']:['uniform','cluster','overlap']).map(s=>`<option>${s}</option>`).join('');render();}
+function render(){const domain=$('domain').value,round=+$('round').value,distribution=$('distribution').value,peer=$('peer').value,metric=$('metric').value;
+const rs=records.filter(r=>r.domain===domain&&r.round===round),own=domain==='aabb'?'after':'moctree';
+const scenarios=[...new Set(rs[0].rows.filter(x=>x.backend===peer).map(x=>x.scenario))];
+$('note').textContent='单位：ms / 八条查询一批。极短延迟比值易受计时粒度影响；两轮范围不代表置信区间。工作量格子为八批的均值。';
+const table=$('matrix');table.replaceChildren();const head=table.insertRow();head.innerHTML='<th>场景</th>'+[1000,10000,100000].flatMap(n=>['count','cap64','all'].map(m=>`<th>${n}<br>${m}</th>`)).join('');
+for(const scenario of scenarios){const tr=table.insertRow();const th=document.createElement('th');th.textContent=scenario;tr.append(th);
+for(const n of [1000,10000,100000])for(const mode of ['count','cap64','all']){const r=rs.find(r=>r.archiveSize===n),find=backend=>r.rows.find(x=>x.backend===backend&&x.distribution===distribution&&x.scenario===scenario&&x.mode===mode),a=find(own),b=find(peer),s=stats(a,domain);
+const isRatio=metric.startsWith('p'),value=isRatio?(a.batchMs[metric]>0&&b.batchMs[metric]>0?a.batchMs[metric]/b.batchMs[metric]:null):(s.some(x=>x[metric]==null)?null:mean(s.map(x=>x[metric])));
+const td=tr.insertCell(),button=document.createElement('button');button.textContent=value==null?'不可比较':fmt(value)+(isRatio?'×':'');
+if(isRatio&&value!=null){const v=Math.max(-1,Math.min(1,Math.log2(value)/4));td.style.background=`hsl(${v<0?210:8} 70% ${97-Math.abs(v)*28}%)`;}
+const sub=document.createElement('small');sub.textContent=`${fmt(a.batchMs[isRatio?metric:'p50'])} / ${fmt(b.batchMs[isRatio?metric:'p50'])} ms`;button.append(sub);td.append(button);
+button.onclick=()=>{const batches=x=>stats(x,domain).map((s,i)=>({...s,batch:i,testedPerHit:s.hits>0&&s.tested!=null?s.tested/s.hits:null,latency:q(x.rawMs.filter((_,j)=>x.sampleBatches[j]===i))}));$('detail').textContent=JSON.stringify({source:r.path,sourceSha256:r.sha256,round,domain,distribution,scenario,n,mode,ratioDefinition:'MOctree / peer',host:r.host,outputBytes:domain==='aabb'?a.outputBytes:8*(mode==='all'?n:mode==='cap64'?64:0)*24+8*16,moctree:{...a,perBatch:batches(a)},peer:{...b,perBatch:batches(b)},moduleHashes:r.modules},null,2);};
+}}
+$('resources').textContent=JSON.stringify(rs.map(r=>({source:r.path,count:r.archiveSize,modules:r.modules,builds:r.builds.filter(x=>[own,peer].includes(x.backend)&&x.distribution===distribution),resources:r.resources.filter(x=>[own,peer].includes(x.backend)&&x.distribution===distribution)})),null,2);
+$('detail').textContent='请选择单元格。';}
+$('domain').onchange=setup;for(const id of ['peer','round','distribution','metric'])$(id).onchange=render;setup();window.octreeBench={ready:true,records:records.length};
+</script></html>

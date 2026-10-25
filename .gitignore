@@ -6,6 +6,9 @@ target/
 # Local agent sessions and scratch data
 .openseek/
 
+# Local hackathon application
+/hackathon-application.md
+
 # Local environment and credentials
 .env
 .env.*

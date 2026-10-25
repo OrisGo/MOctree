@@ -1,3 +1,7 @@
+# 历史编译器 ICE 调查
+
+以下为 Windows 特定工具链 `0.10.14+7d59c7ec9` 的历史调查原文；未在本次审查中重现，不能据此判断当前工具链或 native 后端不可用。较新环境的验收见[第一阶段记录](validation-m1.md)和[批量查询记录](validation-batch.md)。
+
 <!--
   Thank you for finding an Internal Compiler Error!
 

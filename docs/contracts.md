@@ -100,7 +100,7 @@ NodeInfo 提供索引实例内的节点 ID、边界、深度、所属子区编�
 - 分别返回错误、数量和完整性；单条溢出不占用其他查询的容量。
 - 单条非法查询不阻止其他合法查询。
 - 批次整体偏移越界或输出区间重叠，在执行前报错。
-- JS/WASM 的具体编码、导出名称和缓冲生命周期协议在 M2 落实，不把内部布局作为稳定 ABI。
+- wasm 的具体编码、导出名称和缓冲生命周期已由[线性内存适配 v1](wasm-linear.md)定义；wasm-gc 块传输仍待实现，不把内部布局作为稳定 ABI。
 
 2026-10-23：`query_aabb_batch_into` 和 `query_ray_candidates_batch_into` 接受
 `ArrayView[BatchQuery[Aabb]]` / `ArrayView[BatchQuery[Ray]]`。每项携带
