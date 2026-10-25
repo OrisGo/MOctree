@@ -2,6 +2,7 @@
 .github/
 AGENTS.md
 README.md
+hackathon-application.md
 benchmarks/
 scripts/
 *.mbtx

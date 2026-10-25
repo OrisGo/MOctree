@@ -66,6 +66,7 @@ CI 还上传通过消费者检查的源码 ZIP，作为候选分发包；它不�
 ## 发布包边界
 
 [.moonignore](../.moonignore) 排除基准、原始跑分、调研脚本、CI 配置、集成驱动和仓库开发文档。
+本地申报书 `hackathon-application.md` 同时由 `.gitignore` 和 `.moonignore` 排除，避免进入 Git 提交或源码分发包。
 保留核心/适配源码、生成接口、核心测试、JS 包装器、许可证、[包说明](package-readme.md)与[API 用法](api.md)。
 模块元数据的 `readme` 指向包内自洽说明，`repository` 指向项目仓库；补充 Apache-2.0 许可证全文。
 
