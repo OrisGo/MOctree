@@ -1,4 +1,4 @@
-# 第一阶段 API 使用说明
+# API 使用说明
 
 核心由 `orisgo/octree/geom` 和 `orisgo/octree/objects` 两个公开包组成。根包 `orisgo/octree` 导出便捷入口，以下代码以根包别名 `@octree` 为例。
 
@@ -80,7 +80,7 @@ let reports = index.query_aabb_batch_into(requests, output, workspace)
 工作区不足抛出 `BatchError`，输出不变。相邻区间和零容量区间合法；
 空批次可使用容量为零的工作区。输出未写部分保持原值。
 批次复用工作区，但分配区间排序临时数组和逐条报告数组；请求与缓冲均不被索引保留。
-这两个入口是纯 MoonBit API，JS/WASM 传输协议仍待实现。
+这两个入口是纯 MoonBit API。JavaScript/WASM 批量调用使用独立适配层；源码仓库中的 `docs/wasm-linear.md` 说明已实现的 wasm 线性内存协议，`docs/wasm-prototype.md` 说明后端语义对照原型。
 
 ## 只读遍历
 
@@ -98,8 +98,8 @@ NodeInfo 的 `object_count` 只表示直属对象，不是子树对象总数。�
 
 ## 当前限制
 
-- 仅静态 Double 对象索引，无动态更新、单精度类型、点云近邻或批量宿主 ABI。
+- 核心仅提供静态 Double 对象索引，无动态更新、单精度类型或点云近邻。wasm 批量宿主接口由独立适配层提供，wasm-gc 块传输尚未完成。
 - 仅有限且非负的射线参数区间；不做网格精确相交。
 - 普通单归属树会在跨分割面对象较多时退化为扫描。
-- 构建使用有界深度递归与临时分桶，尚未测量构建峰值或优化为紧凑平坦布局。
+- 构建使用有界深度递归与临时分桶，最终存储采用节点数组和 DFS 连续条目数组；现有资源记录不等于完整活跃堆峰值测量。
 - 元素容量统计不等于运行时字节数；没有零分配或移动设备容量承诺。

@@ -6,7 +6,7 @@
 
 - 开始工作前阅读 [README](README.md)，按任务需要查阅 [项目方案](docs/project-plan.md)、[结构设计](docs/architecture.md)和 [接口契约](docs/contracts.md)。
 - 首版只实现 Double、批量构建、只读查询的 AABB 对象索引。后续动态写入、实际单精度存储和点云索引是扩展路线，不自动进入当前任务。
-- 第一阶段已实现 geom 和 objects 包及根包导出；已实现 API 以生成的 `.mbti` 与 docs/api.md 为准。架构文档中的动态、点云和适配层目录仍为规划，不能当作现有能力。
+- 已实现 geom、objects、根包导出，以及 adapters/prototype 实验原型和 adapters/linear 的 wasm 批量适配；核心 API 以生成的 `.mbti` 与 docs/api.md 为准，宿主协议见 docs/wasm-linear.md。动态、点云及 wasm-gc 块传输仍为规划，不能当作现有能力。
 - 改变已确认的范围、正确性保证或公开语义时，先说明影响并由用户判断。普通实现细节可在授权范围内自行决定并记录依据，不必逐项请求确认。
 - 对接口契约中的待决项，实施前明确选择及测试依据；涉及应用可见行为且缺少依据时向用户澄清。
 
