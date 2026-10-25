@@ -7,6 +7,8 @@
 新增的 [MoonSTRtree 三维对照](strtree/README.md) 使用独立模块和独立结果记录，
 比较两套 WASM 实现及 JS 扫描的计数、限量和完整 AABB 输出。
 
+另有 [连续视口/选框及 DFS 条目布局基准](browser/layout-README.md)，包含两轮基线/候选/STR 对照与射线回归。
+
 ## 运行
 
 要求：项目当前 MoonBit 工具链、Node.js 22+（内置 WebSocket）、本机 Chrome/Chromium。

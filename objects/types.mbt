@@ -37,6 +37,7 @@ priv struct Node {
   mut child_mask : UInt32
   mut start : Int32
   mut count : Int32
+  mut subtree_count : Int32
 }
 
 ///|
@@ -44,7 +45,6 @@ priv struct Node {
 pub struct StaticObjectIndex {
   priv entries : Array[Entry]
   priv nodes : Array[Node]
-  priv order : Array[Int32]
   priv summary : IndexStats
 }
 

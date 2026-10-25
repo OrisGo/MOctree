@@ -9,6 +9,7 @@ fn node(bounds : @geom.Aabb, depth : Int32, octant : Int32) -> Node {
     child_mask: 0U,
     start: 0,
     count: 0,
+    subtree_count: 0,
   }
 }
 
@@ -101,6 +102,8 @@ fn split(
   threshold : Int32,
 ) -> Unit {
   let current = nodes[index]
+  // DFS appends this entire subtree contiguously, starting at current.start.
+  current.subtree_count = items.length()
   let b = current.bounds
   let mid = @geom.Vec3::new(
     midpoint(b.min.x, b.max.x),
@@ -208,6 +211,8 @@ pub fn StaticObjectIndex::build(
     max_depth,
     split_threshold,
   )
+  // Compact the DFS permutation once; do not retain the order array.
+  let entries = Array::makei(order.length(), i => entries[order[i]])
   let depth = nodes.fold(init=0, (d, n) => if n.depth > d { n.depth } else { d })
   let summary : IndexStats = {
     object_count: entries.length(),
@@ -219,8 +224,8 @@ pub fn StaticObjectIndex::build(
     split_threshold,
     object_capacity: entries.capacity(),
     node_capacity: nodes.capacity(),
-    order_capacity: order.capacity(),
+    order_capacity: 0,
     workspace_required: 1 + 7 * depth,
   }
-  { entries, nodes, order, summary, }
+  { entries, nodes, summary, }
 }

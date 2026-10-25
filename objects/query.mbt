@@ -54,9 +54,26 @@ fn StaticObjectIndex::run_query(
     top -= 1
     let node = self.nodes[workspace.stack[top]]
     visited += 1
-    if region.intersects(node.bounds) {
+    let contained = match region {
+      Box(query) => query.contains(node.bounds)
+      Ray(_) => false
+    }
+    if contained {
+      hits += node.subtree_count
+      let available = capacity - written
+      let count = if available < node.subtree_count {
+        available
+      } else {
+        node.subtree_count
+      }
+      for i in node.start..<(node.start + count) {
+        output[offset + written] = self.entries[i].id
+        written += 1
+      }
+      // Descendants need neither node pruning nor object intersection tests.
+    } else if region.intersects(node.bounds) {
       for i in node.start..<(node.start + node.count) {
-        let entry = self.entries[self.order[i]]
+        let entry = self.entries[i]
         tested += 1
         if region.intersects(entry.bounds) {
           hits += 1

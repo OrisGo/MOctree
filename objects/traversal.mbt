@@ -29,7 +29,7 @@ pub fn StaticObjectIndex::node_object_id(
   guard id >= 0 && id < self.nodes.length() else { raise InvalidNode }
   let node = self.nodes[id]
   guard offset >= 0 && offset < node.count else { raise InvalidObjectOffset }
-  self.entries[self.order[node.start + offset]].id
+  self.entries[node.start + offset].id
 }
 
 ///|

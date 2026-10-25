@@ -27,12 +27,24 @@ test "node pool ranges, child masks, containment and single ownership" {
     let parents = FixedArray::make(tree.nodes.length(), 0)
     for n in tree.nodes {
       assert_true(
-        n.start >= 0 && n.count >= 0 && n.start + n.count <= tree.order.length(),
+        n.start >= 0 &&
+        n.count >= 0 &&
+        n.start + n.count <= tree.entries.length(),
       )
       for i in n.start..<(n.start + n.count) {
-        let object = tree.order[i]
+        let object = tree.entries[i].id.reinterpret_as_int()
         seen[object] += 1
         assert_true(n.bounds.contains(entries[object].bounds))
+      }
+      let mut end = n.start + n.count
+      for i in 0..<n.child_count {
+        let child = tree.nodes[n.first_child + i]
+        assert_eq(child.start, end)
+        end += child.subtree_count
+      }
+      assert_eq(end, n.start + n.subtree_count)
+      for i in n.start..<end {
+        assert_true(n.bounds.contains(tree.entries[i].bounds))
       }
       let mut mask = 0U
       let mut last_octant = -1
@@ -51,6 +63,7 @@ test "node pool ranges, child masks, containment and single ownership" {
     for count in seen {
       assert_eq(count, 1)
     }
+    assert_eq(tree.nodes[0].subtree_count, entries.length())
     assert_eq(parents[0], 0)
     for i in 1..<parents.length() {
       assert_eq(parents[i], 1)

@@ -205,7 +205,7 @@ test "query statistics distinguish pruning tests hits and writes" {
   let output = FixedArray::make(1, 999U)
   let all = tree.query_aabb_into(root().bounds, output, tree.workspace())
   assert_eq(all.visited_nodes, 1)
-  assert_eq(all.tested_objects, 2)
+  assert_eq(all.tested_objects, 0)
   assert_eq(all.total_hits, 2)
   assert_eq(all.written, 1)
   let outside = tree.query_aabb_into(
@@ -217,4 +217,25 @@ test "query statistics distinguish pruning tests hits and writes" {
   assert_eq(outside.tested_objects, 0)
   assert_eq(outside.total_hits, 0)
   assert_eq(outside.written, 0)
+}
+
+///|
+test "contained child skips descendants but still tests parent and touching sibling" {
+  let entries = [
+    @octree.Entry::new(0U, bounds(-1.0, -1.0, -1.0, 2.0)),
+    @octree.Entry::new(1U, bounds(-64.0, -64.0, -64.0, 1.0)),
+    @octree.Entry::new(2U, bounds(-32.0, -32.0, -32.0, 1.0)),
+    @octree.Entry::new(3U, bounds(32.0, 32.0, 32.0, 1.0)),
+    @octree.Entry::new(4U, bounds(64.0, 64.0, 64.0, 1.0)),
+  ]
+  let tree = build(entries)
+  let query = bounds(-128.0, -128.0, -128.0, 128.0)
+  for capacity in [0, 1, 3, 5] {
+    let output = FixedArray::make(capacity, 999U)
+    let stats = tree.query_aabb_into(query, output, tree.workspace())
+    assert_eq(stats.total_hits, @octree.scan_aabb(entries, query).length())
+    assert_eq(stats.total_hits, 3)
+    assert_eq(stats.visited_nodes, 3)
+    assert_eq(stats.tested_objects, 3)
+  }
 }
