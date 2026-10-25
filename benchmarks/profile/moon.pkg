@@ -1,0 +1,7 @@
+import {
+  "gywcs101/moonflame",
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "+js"

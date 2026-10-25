@@ -144,3 +144,7 @@ wasm 与 wasm-gc 可以使用不同的传输实现，但必须保持相同查询
 输入、核心条目、结果均有明确副本；全局状态只保留索引与工作区，传输数组限于单次调用。
 数字数组载荷依赖本机已验证的编译器表示，集中在 transport.mbt；升级工具链须重跑
 debug/release 集成测试。wasm-gc 仍使用独立原型作对照，不声称共享此布局或已完成 M2。
+
+`benchmarks/browser` 在浏览器测量上述公开适配，独立 JS 扫描用于正确性及性能对照。
+`benchmarks/profile` 是独立 MoonBit 模块，使用 MoonFlame 渲染 Chrome 采集的折叠栈；
+此依赖不进入核心模块。资源探针和采样都与延迟计时分开，详见 [测量口径](../benchmarks/README.md)。

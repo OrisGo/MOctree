@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MOctree · WASM 浏览器基准</title>
+<style>
+  :root { color-scheme: light; font: 15px/1.6 system-ui,sans-serif; color: #14283b; background: #f2f5f8; }
+  body { max-width: 1200px; margin: 40px auto; padding: 0 24px 60px; }
+  h1 { font-size: 30px; margin-bottom: 4px; } h2 { margin-top: 30px; }
+  .eyebrow { color: #296a76; letter-spacing: .14em; font-size: 12px; font-weight: 700; }
+  .muted { color: #526577; } button,select { font: inherit; padding: 9px 16px; border: 1px solid #a5b8c7; border-radius: 6px; }
+  button { cursor: pointer; background: #155e75; color: white; } button:disabled { opacity: .5; cursor: default; }
+  a { color: #155e75; } .panel { margin-top: 18px; background: white; padding: 20px; border: 1px solid #dce4eb; border-radius: 10px; }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; } #status { margin: 12px 0; }
+  .scroll { overflow: auto; } table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th,td { padding: 9px 12px; border-bottom: 1px solid #e5ebf0; text-align: right; white-space: nowrap; }
+  th:first-child,td:first-child { text-align: left; } th { color: #526577; font-size: 13px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 16px; }
+  .card { padding: 16px; background: #edf6f5; border-radius: 8px; } .card strong { display: block; font-size: 24px; }
+  code { font-size: 12px; } #error { color: #a02121; white-space: pre-wrap; } iframe { width: 100%; height: 700px; border: 1px solid #dce4eb; background: white; }
+</style>
+<div class="eyebrow">MOCTREE / BROWSER LAB</div>
+<h1>WASM 性能与资源验收</h1>
+<p class="muted">固定数据种子，真实浏览器执行。比较块传输、标量原型、WASM-GC 原型及 JS 暴力扫描。</p>
+<div class="panel">
+  <div class="controls"><button id="run">运行完整基准</button><button id="saved">查看上次结果</button><button id="download" disabled>导出 JSON</button></div>
+  <div id="status" role="status" aria-live="polite">就绪 · 每项 20 次预热 + 100 次采样，单样本为 8 条查询的完整批次。</div>
+  <p class="muted">计时包含宿主传输、查询和结果复制；不包含数据生成、正确性校验和绘图。运行时请保持页面前台，避免并行重负载。</p>
+  <div id="error" role="alert"></div>
+</div>
+<div id="results" hidden>
+  <div class="panel cards" id="cards"></div>
+  <h2>查询延迟 <small class="muted">毫秒 / 批次</small></h2>
+  <div class="controls">
+    <label>分布 <select id="distribution"><option value="uniform">均匀随机</option><option value="cluster">聚簇</option><option value="overlap">全重叠</option></select></label>
+    <label>负载 <select id="scenario"><option value="selective">局部 AABB</option><option value="ray">射线</option><option value="broad">全根 AABB</option></select></label>
+  </div>
+  <div class="panel scroll"><table><thead><tr><th>对象数 / 后端</th><th>p50</th><th>p95</th><th>p99</th><th>测试对象数</th><th>命中 / 写入</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <h2>资源观察</h2><div class="panel" id="resources"></div>
+  <h2>MoonFlame 调用栈分析</h2>
+  <p>独立 Chrome CPU 采样，经 <a href="https://mooncakes.io/docs/gywcs101/moonflame@0.2.0">moonflame 0.2.0</a> 转为火焰图。宽度表示样本数，不是精确耗时；GC、宿主和 WASM 帧均保留。</p>
+  <p><a target="_blank" href="/_build/browser-results/query.svg">射线查询火焰图</a> · <a target="_blank" href="/_build/browser-results/query-broad.svg">全根查询火焰图</a> · <a target="_blank" href="/_build/browser-results/build.svg">重建火焰图</a></p>
+  <iframe id="flame" title="MoonFlame 查询火焰图" hidden></iframe>
+  <p class="muted">本机结果不代表移动设备容量。线性内存容量不等于活跃堆字节或整个浏览器峰值；采样尾延迟受运行环境影响。</p>
+</div>
+<script type="module" src="./page.mjs"></script>
+</html>

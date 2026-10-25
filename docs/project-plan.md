@@ -51,7 +51,9 @@ WASM-first 是工程方向。动态 loose octree、Morton 排序和数值泛型�
 双后端宿主最小原型已验证标量 staging 路径，见 [协议与验收](wasm-prototype.md)。
 2026-10-25：wasm 已实现 [线性内存批量适配 v1](wasm-linear.md)，包含版本检查、错误详情、
 传输预算和独立输出副本；Node debug/release 集成通过。
-wasm-gc 块传输、浏览器验证与资源基准仍待完成，M2 尚未整体验收。
+2026-10-25：新增 [浏览器验收与初始资源基准](../benchmarks/README.md)，覆盖桌面 Chrome、
+三档规模、三类分布，包含独立扫描对照、传输原型比较及 MoonFlame 调用栈分析。
+wasm-gc 块传输、完整内存峰值和受限设备验收仍待完成，M2 尚未整体验收。
 
 首版不做：
 
