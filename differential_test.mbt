@@ -78,6 +78,43 @@ test "differential: eight distributions, three budgets, AABB and ray queries" {
         assert_true(result.tested_objects <= entries.length())
         assert_eq(output[0], 777U)
         assert_eq(output[161], 777U)
+        for capacity in [0, 3, expected.length()] {
+          let limited_output = FixedArray::make(capacity + 2, 999U)
+          let limited_aabb = tree.query_aabb_into(
+            b,
+            limited_output,
+            workspace,
+            offset=1,
+            capacity~,
+          )
+          assert_eq(limited_aabb.total_hits, expected.length())
+          assert_eq(
+            limited_aabb.written,
+            if capacity < expected.length() {
+              capacity
+            } else {
+              expected.length()
+            },
+          )
+          assert_eq(
+            limited_aabb.completeness,
+            if limited_aabb.written == expected.length() {
+              @octree.Completeness::Complete
+            } else {
+              @octree.Completeness::Truncated
+            },
+          )
+          for i in 0..<limited_aabb.written {
+            assert_true(expected.contains(limited_output[i + 1]))
+            for j in 0..<i {
+              assert_true(limited_output[j + 1] != limited_output[i + 1])
+            }
+          }
+          assert_eq(limited_output[0], 999U)
+          for i in (1 + limited_aabb.written)..<limited_output.length() {
+            assert_eq(limited_output[i], 999U)
+          }
+        }
         let target = entries[iteration % entries.length()].bounds.min
         let origin = point(x + 400.0, y, z)
         let ray = @octree.Ray::new(

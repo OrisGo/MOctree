@@ -25,6 +25,7 @@
 已完成 [MoonSTRtree 三维同语义对照](docs/validation-strtree.md)，覆盖计数、限量和完整 AABB 输出。
 已完成 [AABB 子树整体命中优化与前后对照](docs/validation-subtree.md)，保留准确计数及统计口径。
 新版已完成 [同浏览器 MoonSTRtree 两轮复测](docs/validation-subtree-strtree.md)，明确整体命中优势与局部查询瓶颈。
+已归档 [子树实际内容边界实验](docs/validation-content-bounds.md)：两轮 Chrome 对照后，因构建、内存和完整输出代价未保留生产改动。
 wasm-gc 块传输、受限设备验收、空间划分交互示例和完整算法对照基准仍待完成。
 动态写入、单精度存储和点云索引仍属于后续路线。M2 尚未整体验收，第一阶段完成不代表首版已发布或已完成受限设备资源验收。
 

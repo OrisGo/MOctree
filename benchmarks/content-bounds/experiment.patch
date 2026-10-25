@@ -1,0 +1,203 @@
+--- a/objects/build.mbt
++++ b/objects/build.mbt
+@@ -4,0 +5 @@
++    content_bounds: bounds,
+@@ -213,0 +215 @@
++  finish_content_bounds(nodes, entries, order)
+--- a/objects/types.mbt
++++ b/objects/types.mbt
+@@ -32,0 +33 @@
++  mut content_bounds : @geom.Aabb
+--- a/objects/query.mbt
++++ b/objects/query.mbt
+@@ -56,0 +57,4 @@
++    let bounds = match region {
++      Box(_) => node.content_bounds
++      Ray(_) => node.bounds
++    }
+@@ -58 +62 @@
+-      Box(query) => query.contains(node.bounds)
++      Box(query) => query.contains(bounds)
+@@ -74 +78 @@
+-    } else if region.intersects(node.bounds) {
++    } else if region.intersects(bounds) {
+--- /dev/null
++++ b/objects/content_bounds.mbt
+@@ -0,0 +1,57 @@
++///|
++// Parents always precede children in the pool (not necessarily in DFS order).
++// Merge direct objects and finished children once, rather than scanning every
++// ancestor's complete subtree. Only the empty root uses its cell as a sentinel.
++fn finish_content_bounds(
++  nodes : Array[Node],
++  entries : Array[Entry],
++  order : Array[Int32],
++) -> Unit {
++  for index = nodes.length() - 1; index >= 0; index = index - 1 {
++    let n = nodes[index]
++    if n.subtree_count == 0 {
++      continue
++    }
++    let first = if n.count > 0 {
++      entries[order[n.start]].bounds
++    } else {
++      nodes[n.first_child].content_bounds
++    }
++    let mut min_x = first.min.x
++    let mut min_y = first.min.y
++    let mut min_z = first.min.z
++    let mut max_x = first.max.x
++    let mut max_y = first.max.y
++    let mut max_z = first.max.z
++    for i in 0..<(n.count + n.child_count) {
++      let b = if i < n.count {
++        entries[order[n.start + i]].bounds
++      } else {
++        nodes[n.first_child + i - n.count].content_bounds
++      }
++      if b.min.x < min_x {
++        min_x = b.min.x
++      }
++      if b.min.y < min_y {
++        min_y = b.min.y
++      }
++      if b.min.z < min_z {
++        min_z = b.min.z
++      }
++      if b.max.x > max_x {
++        max_x = b.max.x
++      }
++      if b.max.y > max_y {
++        max_y = b.max.y
++      }
++      if b.max.z > max_z {
++        max_z = b.max.z
++      }
++    }
++    // Select only validated finite endpoints; no arithmetic or rounding growth.
++    n.content_bounds = try! @geom.Aabb::new(
++      @geom.Vec3::new(min_x, min_y, min_z),
++      @geom.Vec3::new(max_x, max_y, max_z),
++    )
++  }
++}
+--- a/objects/invariants_wbtest.mbt
++++ b/objects/invariants_wbtest.mbt
+@@ -36,0 +37 @@
++      assert_true(n.bounds.contains(n.content_bounds))
+@@ -45 +46,2 @@
+-        assert_true(n.bounds.contains(entries[tree.order[i]].bounds))
++        let b = entries[tree.order[i]].bounds
++        assert_true(n.content_bounds.contains(b))
+@@ -71,0 +74,61 @@
++
++///|
++test "content bounds are tight and content queries agree with independent scan" {
++  let root = @geom.Cube::new(@geom.Vec3::origin(), 128.0)
++  let entries = Array::makei(129, i => {
++    let x = (i * 19 % 180 - 90).to_double()
++    let y = (i * 37 % 180 - 90).to_double()
++    let z = (i * 53 % 180 - 90).to_double()
++    Entry::new(
++      i.reinterpret_as_uint(),
++      try! @geom.Aabb::new(
++        @geom.Vec3::new(x, y, z),
++        @geom.Vec3::new(x + 0.5, y + 0.5, z + 0.5),
++      ),
++    )
++  })
++  for budget in [1, 16, 4096] {
++    let tree = StaticObjectIndex::build(
++      entries,
++      root~,
++      max_objects=129,
++      max_nodes=budget,
++      split_threshold=1,
++    )
++    for n in tree.nodes {
++      let b = n.content_bounds
++      let mut endpoints = 0U
++      for i in n.start..<(n.start + n.subtree_count) {
++        let e = entries[tree.order[i]].bounds
++        if e.min.x == b.min.x {
++          endpoints = endpoints | 1U
++        }
++        if e.min.y == b.min.y {
++          endpoints = endpoints | 2U
++        }
++        if e.min.z == b.min.z {
++          endpoints = endpoints | 4U
++        }
++        if e.max.x == b.max.x {
++          endpoints = endpoints | 8U
++        }
++        if e.max.y == b.max.y {
++          endpoints = endpoints | 16U
++        }
++        if e.max.z == b.max.z {
++          endpoints = endpoints | 32U
++        }
++      }
++      assert_eq(endpoints, 63U)
++      let expected = scan_aabb(entries, b)
++      for capacity in [0, 1, expected.length(), expected.length() + 1] {
++        let output = FixedArray::make(capacity, 0U)
++        let r = tree.query_aabb_into(b, output, tree.workspace())
++        assert_eq(r.total_hits, expected.length())
++        for i in 0..<r.written {
++          assert_true(expected.contains(output[i]))
++        }
++      }
++    }
++  }
++}
+--- a/query_test.mbt
++++ b/query_test.mbt
+@@ -223 +223 @@
+-test "contained child skips descendants but still tests parent and touching sibling" {
++test "content bounds skip contained child and empty space in touching sibling" {
+@@ -239,3 +239,41 @@
+-    assert_eq(stats.tested_objects, 3)
+-  }
+-}
++    assert_eq(stats.tested_objects, 1)
++  }
++}
++
++///|
++test "tight content bounds preserve public cells and count a small whole cluster" {
++  let entries = Array::makei(40, i => {
++    @octree.Entry::new(
++      i.reinterpret_as_uint(),
++      bounds(31.0 + i.to_double() / 100.0, 32.0, 33.0, 0.0),
++    )
++  })
++  for budget in [1, 16, 4096] {
++    let tree = build(entries, max_nodes=budget, threshold=1)
++    assert_eq(tree.node_info(0).bounds, root().bounds)
++    for capacity in [0, 1, 39, 40, 41] {
++      let output = FixedArray::make(capacity + 2, 999U)
++      let result = tree.query_aabb_into(
++        bounds(31.0, 31.0, 31.0, 3.0),
++        output,
++        tree.workspace(),
++        offset=1,
++        capacity~,
++      )
++      assert_eq(result.total_hits, 40)
++      assert_eq(result.visited_nodes, 1)
++      assert_eq(result.tested_objects, 0)
++      assert_eq(result.written, if capacity < 40 { capacity } else { 40 })
++      assert_eq(
++        result.completeness,
++        if capacity < 40 {
++          @octree.Completeness::Truncated
++        } else {
++          @octree.Completeness::Complete
++        },
++      )
++      assert_eq(output[0], 999U)
++      assert_eq(output[capacity + 1], 999U)
++    }
++  }
++}
