@@ -55,4 +55,7 @@ try {
   await writeFile(join(output,'comparison.json'),JSON.stringify(result,null,2)+'\n');
   if(record){const dir=join(root,'benchmarks/results');await mkdir(dir,{recursive:true});await writeFile(join(dir,result.startedAt.replace(/[:.]/g,'-')+'-strtree-chrome.json'),JSON.stringify(result,null,2)+'\n',{flag:'wx'});}
   console.log(`PASS ${result.rows.length} rows: ${output}/comparison.json`);
-}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
+}finally{
+  try{await browser?.close();}
+  finally{await new Promise(resolve=>server.close(resolve));}
+}
