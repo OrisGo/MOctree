@@ -5,7 +5,17 @@
 `_build/wasm/release/build/adapters/linear/linear.wasm` 保存为当前实验 checkout 的
 `_build/browser-results/content-before.wasm`。不要用实验后的模块覆盖基线。
 
-本轮没有保留生产优化。先在独立实验分支应用归档补丁（不要覆盖其他改动）：
+本轮没有保留生产优化。归档补丁的应用基点是 **2b9bb52**，不是当前分支。
+从仓库根目录创建新的实验 checkout（目标目录必须不存在，不覆盖现有资料）：
+
+```sh
+git worktree add -b codex/replay-content-bounds ../MOctree-content-replay 2b9bb52
+cd ../MOctree-content-replay
+```
+
+2b9bb52 已含旧实验脚本与补丁，生产核心与 61da14d 相同；可在应用补丁前直接构建并保存
+content-before.wasm。70a2de9 起已改变白盒测试和条目布局，不能直接应用旧补丁。
+在上述旧版本实验 checkout 中执行（保留原补丁及原始数据）：
 
 ```sh
 git apply --unidiff-zero --check benchmarks/content-bounds/experiment.patch

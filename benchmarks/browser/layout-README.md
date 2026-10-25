@@ -53,8 +53,19 @@ all 按现有 ABI 复制 8N 槽位；原始记录的 inputBytes/outputBytes 包�
 
 ## 样本与资源
 
-20 次预热、100 个原始批次样本，逐轮轮换后端；序列索引为 `(round+warmups)%8`。
-因此正式样本首批为第 4 批，每批出现 12 或 13 次，三个后端完全相同。
+旧 v1 使用 20 次预热、100 样本，正式首批为第 4 批；其射线调用顺序与批次奇偶固定绑定，
+旧射线结果不能排除调用顺序影响。当前 v2 正式样本从批次 0 开始：
+batch=i%8，cycle=floor(i/8)，first=(batch+cycle+orderPhase)%后端数。
+每个完整周期移动首后端位置，射线每八批反转顺序，三后端各批也会轮到全部调用位置。
+完整矩阵默认仍为 20/100；射线专项采用 32 预热、128 样本，每批恰有
+8 次 before 先跑和 8 次 after 先跑；第二轮起始相位相反。
+schedules.ray 逐样本记录批次和后端顺序。专项每轮 54 行，不测 AABB 延迟；
+STR 只参与共同域验收、构建和独立资源探针。
+
+    node benchmarks/browser/layout-schedule-test.mjs
+    node benchmarks/browser/layout-run.mjs --ray-only --record
+    node benchmarks/browser/layout-run.mjs --ray-only --reverse-order --record
+
 分位数描述这个固定序列；actualHitRate 描述完整周期，二者没有隐含业务加权。
 构建取 5 个独立实例，实例化在计时外，传输、校验、核心构建和工作区创建在计时内。
 所有延迟包含公开调用与宿主复制，未隔离纯遍历时间。
@@ -78,10 +89,12 @@ node benchmarks/browser/layout-audit.mjs benchmarks/results/2026-10-25T13-15-43-
 ```
 
 正式测量后仅修复页面文字属性：textLayout 改为 textContent。
-若要逐字节恢复测量源码，可在临时 checkout 使用以下补丁（会恢复旧显示问题）：
+若要逐字节恢复旧 v1 测量源码，必须在 70a2de9 的临时 checkout 使用以下补丁（会恢复旧显示问题）：
 
 ```sh
 git apply --unidiff-zero benchmarks/layout/measured-ui.patch
 ```
 
-补丁不改变布局、查询、传输或计时函数；审计同时接受精确测量版本和仅修复显示后的版本。
+该显示补丁不适用于当前 v2 驱动。审计从 Git 的 70a2de9 读取旧 v1 源码并还原显示属性后
+核对旧哈希；v2 则要求当前测量源码和模块哈希一致。旧数据、旧补丁均未改写。
+新结论及审计命令见 [顺序复测报告](../../docs/validation-ray-order.md)。

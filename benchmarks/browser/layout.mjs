@@ -1,3 +1,4 @@
+import {measurementStep} from './layout-schedule.mjs';
 import {jobs, scenarios, parameters} from './layout-data.mjs';
 import { validate } from './compare.mjs';
 import { createLinear } from '../../adapters/linear/client.mjs';
@@ -14,7 +15,7 @@ export function factories(bytes) {
   return Object.fromEntries(Object.entries(bytes).map(([name, data])=>[name,()=>createLinear(data)]));
 }
 
-export async function runLayout({samples=100,warmups=20,sizes=[1000,10000,100000],buildSamples=5}={},progress=()=>{}) {
+export async function runLayout({samples=100,warmups=20,sizes=[1000,10000,100000],buildSamples=5,rayOnly=false,orderPhase=0}={},progress=()=>{}) {
   if(!Number.isInteger(samples)||samples<10||samples>1000||!Number.isInteger(warmups)||warmups<0||warmups>1000||
     !Number.isInteger(buildSamples)||buildSamples<1||buildSamples>20||!Array.isArray(sizes)||!sizes.length||
     sizes.some(n=>!Number.isInteger(n)||n<1||n>100000))throw Error('invalid measurement configuration');
@@ -23,8 +24,8 @@ export async function runLayout({samples=100,warmups=20,sizes=[1000,10000,100000
     const r=await fetch(path,{cache:'no-store'});if(!r.ok)throw Error(`${path}: ${r.status}`);bytes[name]=await r.arrayBuffer();
   }
   const factory=factories(bytes),names=Object.keys(factory);
-  const result={schema:'contiguous-layout-v1',startedAt:new Date().toISOString(),seed:SEED,
-    queryParameters:parameters, workloads:{}, options:{samples,warmups,sizes,buildSamples,batchSize:8,modes:['count','cap64','all']},
+  const result={schema:'contiguous-layout-v2',startedAt:new Date().toISOString(),seed:SEED,
+    queryParameters:parameters, workloads:{}, schedules:{}, options:{samples,warmups,sizes,buildSamples,rayOnly,orderPhase,batchSize:8,modes:['count','cap64','all']},
     environment:{userAgent:navigator.userAgent,crossOriginIsolated,hardwareConcurrency:navigator.hardwareConcurrency},
     acceptance:{},builds:[],rows:[],resources:[]};
   for(const name of names)result.acceptance[name]=await validate(factory[name]);
@@ -38,7 +39,7 @@ export async function runLayout({samples=100,warmups=20,sizes=[1000,10000,100000
         if(round===buildSamples-1)clients[name]=c;else c.release();
       }
       for(const name of names)result.builds.push({count,distribution,backend:name,ms:summary(times[name]),rawMs:times[name]});
-      for(const scenario of scenarios)for(const mode of ['count','cap64','all']){
+      for(const scenario of (rayOnly?['ray']:scenarios))for(const mode of ['count','cap64','all']){
         progress(`${count} / ${distribution} / ${scenario} / ${mode}`);
         const activeNames=scenario==='ray'?names.filter(n=>n!=='strtree'):names;
         const sequence=jobs(scenario,mode==='count'?0:mode==='cap64'?64:count);
@@ -55,10 +56,12 @@ export async function runLayout({samples=100,warmups=20,sizes=[1000,10000,100000
               testedObjects:name==='strtree'?null:r.reports.reduce((s,r)=>s+r.testedObjects,0)});
           }
         }
+        result.schedules[scenario]=Array.from({length:samples},(_,i)=>measurementStep(i,sequence.length,activeNames,orderPhase));
         for(let round=-warmups;round<samples;round++){
-          for(let k=0;k<activeNames.length;k++){
-            const name=activeNames[(round+warmups+k)%activeNames.length],t=performance.now();
-            const r=call(clients[name],sequence[(round+warmups)%sequence.length]),elapsed=performance.now()-t;consume(r);
+          const step=measurementStep(round<0?round+warmups:round,sequence.length,activeNames,orderPhase);
+          for(const name of step.backends){
+            const t=performance.now();
+            const r=call(clients[name],sequence[step.batch]),elapsed=performance.now()-t;consume(r);
             if(round>=0)raw[name].push(elapsed);
           }
           if(round%10===0)await pause();

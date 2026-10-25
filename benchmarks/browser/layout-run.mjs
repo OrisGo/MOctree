@@ -8,9 +8,11 @@ import {serve,root} from './server.mjs';
 import {launch} from './cdp.mjs';
 const quick=process.argv.includes('--quick'),record=process.argv.includes('--record');
 if(quick&&record)throw Error('--record requires full matrix');
+const rayOnly=process.argv.includes('--ray-only'),orderPhase=process.argv.includes('--reverse-order')?1:0;
+const options=quick?{samples:20,warmups:5,sizes:[1000],buildSamples:2,rayOnly,orderPhase}:rayOnly?{samples:128,warmups:32,rayOnly,orderPhase}:{orderPhase};
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const sourceSha256={};
-for(const path of ['benchmarks/browser/layout.mjs','benchmarks/browser/layout-data.mjs','benchmarks/browser/compare.mjs','benchmarks/browser/layout.html','benchmarks/browser/layout-run.mjs',
+for(const path of ['benchmarks/browser/layout.mjs','benchmarks/browser/layout-schedule.mjs','benchmarks/browser/layout-data.mjs','benchmarks/browser/compare.mjs','benchmarks/browser/layout.html','benchmarks/browser/layout-run.mjs',
   'objects/build.mbt','objects/query.mbt','objects/types.mbt',
   'benchmarks/browser/data.mjs','benchmarks/browser/cdp.mjs','benchmarks/browser/server.mjs',
   'benchmarks/strtree/moon.mod','benchmarks/strtree/moon.pkg','benchmarks/strtree/bridge.mbt','benchmarks/strtree/transport.mbt','adapters/linear/client.mjs'])
@@ -35,7 +37,7 @@ try {
   browser=await launch(url+'/benchmarks/browser/layout.html');
   const progress=setInterval(()=>{browser.evaluate('document.querySelector("#status").textContent').then(console.log).catch(()=>{});},15000);
   let result;
-  try{result=await browser.evaluate(`window.octreeBench.start(${quick?JSON.stringify({samples:20,warmups:5,sizes:[1000],buildSamples:2}):'{}'})`);}
+  try{result=await browser.evaluate(`window.octreeBench.start(${JSON.stringify(options)})`);}
   finally{clearInterval(progress);}
   if(browser.errors.length)throw Error(JSON.stringify(browser.errors));
   const command=(cmd,args)=>execFileSync(cmd,args,{cwd:root,encoding:'utf8'}).trim();
@@ -53,7 +55,7 @@ try {
     const dir=join(root,'benchmarks/results');await mkdir(dir,{recursive:true});
     for(const size of result.options.sizes){
       const part={...result,archiveSize:size,rows:result.rows.filter(r=>r.count===size),builds:result.builds.filter(r=>r.count===size),resources:result.resources.filter(r=>r.count===size)};
-      await writeFile(join(dir,result.startedAt.replace(/[:.]/g,'-')+`-layout-${size}-chrome.json`),JSON.stringify(part)+'\n',{flag:'wx'});
+      await writeFile(join(dir,result.startedAt.replace(/[:.]/g,'-')+`-${rayOnly?'ray-order':'layout'}-${size}-chrome.json`),JSON.stringify(part)+'\n',{flag:'wx'});
     }
   }
   console.log(`PASS ${result.rows.length} rows: ${output}/layout.json`);
