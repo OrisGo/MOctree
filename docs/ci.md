@@ -81,6 +81,7 @@ CI 还上传通过消费者检查的源码 ZIP，作为候选分发包；它不�
 
 ```sh
 actionlint -shellcheck=""
+moon update
 prek run --all-files
 moon fmt --check scripts/ci/check-files.mbtx scripts/ci/validate.mbtx
 moon run --deny-warn scripts/ci/check-files.mbtx
@@ -102,6 +103,10 @@ actionlint 校验 Actions 语法与表达式；关闭其可选 shellcheck 集成
 [MoonBit 官方脚本模式文档](https://docs.moonbitlang.com/en/latest/toolchain/moon/script-mode.html)。
 在仓库根目录运行，脚本使用默认 wasm 后端，`moonbitlang/async` 固定为 `0.22.5`；
 首次运行需要下载依赖，CI 不依赖本机缓存。进程通过 `@shell.Cmd` 传入独立参数，失败即停止。
+基础 CI 在工具安装后、首次运行独立脚本前显式执行 `moon update` 初始化包索引。
+脚本中的固定依赖版本不会自动初始化索引；全新 `MOON_HOME` 缺少索引时会报告
+`moonbitlang/async` 不在 registry 中。`validate.mbtx` 内的更新命令不能替代此步骤，
+因为脚本自身必须先解析依赖才能执行。本地复现也需先更新索引，避免已有缓存掩盖遗漏。
 CI 显式检查这两个脚本的格式，并以 `--deny-warn` 运行；根模块 hooks 不会自动检查独立脚本。
 检查范围保持不变，包括已跟踪 JS 语法、本地 Markdown 链接、独立模块、生成接口与适配层集成。
 
