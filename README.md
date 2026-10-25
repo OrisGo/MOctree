@@ -16,7 +16,15 @@
 2026-10-23 补充纯 MoonBit 批量 AABB/射线查询，支持批次输出区间预校验和逐条结果/几何错误。用法见 [API 使用说明](docs/api.md)。
 本次后端验证及限制见 [批量查询验收](docs/validation-batch.md)。
 
-已补充 [JS/WASM 双后端实验原型](docs/wasm-prototype.md)，验证标量 staging 与批量查询的端到端语义；正式批量传输、浏览器示例和性能基准尚未实现。动态写入、单精度存储和点云索引仍属于后续路线。第一阶段完成不代表首版已发布或已完成受限设备资源验收。
+已补充 [JS/WASM 双后端实验原型](docs/wasm-prototype.md)，验证标量 staging 与批量查询的端到端语义。
+2026-10-25 实现 [wasm 线性内存批量适配 v1](docs/wasm-linear.md)：整块复制输入/结果、版本检查、
+错误详情及传输预算，已完成 Node.js debug/release 验证。
+已增加 [浏览器验收与资源基准](benchmarks/README.md)，包含 1 千/1 万/10 万对象的查询对照、
+资源快照，以及 `moonflame@0.2.0` 渲染的 Chrome WASM 采样火焰图。
+本次实测结果与限制见 [浏览器验收报告](docs/validation-browser.md)。
+已完成 [MoonSTRtree 三维同语义对照](docs/validation-strtree.md)，覆盖计数、限量和完整 AABB 输出。
+wasm-gc 块传输、受限设备验收、空间划分交互示例和完整算法对照基准仍待完成。
+动态写入、单精度存储和点云索引仍属于后续路线。M2 尚未整体验收，第一阶段完成不代表首版已发布或已完成受限设备资源验收。
 
 ## 设计文档
 
@@ -25,6 +33,7 @@
 - [接口契约](docs/contracts.md)：已确认并落实的第一阶段语义，以及后续阶段的契约边界。
 - [API 使用说明](docs/api.md)：构建、查询、缓冲和遍历的调用方法。
 - [第一阶段验收](docs/validation-m1.md)：测试矩阵、环境及未验证范围。
+- [CI 与发布准备](docs/ci.md)：合并检查、浏览器验收、手动完整基准及发布包边界。
 
 现有 [编译器 ICE 调查记录](docs/ice-2-llvm-target-std-bundle.md)属于历史开发环境资料，不构成当前后端支持状态的证明。
 
@@ -45,3 +54,13 @@ prek run --all-files
 配置使用 prek 内置文本检查和本机 MoonBit 命令，无需下载远端 hook 仓库。MoonBit 包源码或配置变更会触发格式化及 wasm、wasm-gc 的检查和测试；纯文档变更不触发这些编译检查。格式化如修改文件，需要复核、重新暂存并重跑。
 
 独立 `.mbtx` 调研脚本仅接受通用文本检查，不自动执行其网络或文件操作。公开 API 变化仍需额外运行 `moon info` 并复核生成接口；JS/native 验证、性能测量和其他契约验收按任务范围补充。
+
+适配层变更还需执行 [双后端原型测试](docs/wasm-prototype.md#复现与验收)及
+[线性内存适配 debug/release 集成测试](docs/wasm-linear.md#复现与验收)，这些 Node 测试不在 hooks 中。
+浏览器基准和独立 MoonFlame 模块的修改还需执行 [各自验收](benchmarks/README.md#修改后的验收)。
+MoonSTRtree 对照桥需额外执行 [独立模块及 debug/release 集成验收](benchmarks/strtree/README.md#复现)。
+
+GitHub Actions 配置位于 `.github/workflows/ci.yml` 和 `browser.yml`，核心验收脚本位于 `scripts/ci/`。
+工作流推送到远端后才会运行；required checks 需在首次成功运行后由仓库管理员启用。
+CI 生成经过解包消费者验证的候选源码包，不自动发布。库归档通过 `.moonignore` 排除基准与开发资料，
+发布包说明见 [package-readme](docs/package-readme.md)。

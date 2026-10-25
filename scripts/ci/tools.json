@@ -1,0 +1,21 @@
+{
+  "moon": {
+    "version": "0.10.16+b1a0e846e",
+    "url": "https://cli.moonbitlang.com/binaries/0.10.16%2Bb1a0e846e/moonbit-linux-x86_64.tar.gz",
+    "sha256": "84ae424cd31bc485d2cf4d3736534e52f2f265ceafb562a187b9ab26d9566212"
+  },
+  "core": {
+    "url": "https://cli.moonbitlang.com/cores/core-0.10.16%2Bb1a0e846e.tar.gz",
+    "sha256": "e7db6e3c80a97af953598b374cf14f3e330918b1ca4659b141b9f550c9c0adb0"
+  },
+  "prek": {
+    "version": "0.4.14",
+    "url": "https://github.com/j178/prek/releases/download/v0.4.14/prek-x86_64-unknown-linux-gnu.tar.gz",
+    "sha256": "d1eacb826b9f71ce9098636d2c3e96df0ed1cf08c9c17c57bf358b401f5a995d"
+  },
+  "actionlint": {
+    "version": "1.7.7",
+    "url": "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz",
+    "sha256": "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
+  }
+}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MOctree × MoonSTRtree</title>
+<style>
+body{margin:0;background:#f2f5f8;color:#142c40;font:16px/1.7 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:40px 24px}h1{font-size:32px}a{color:#176276}section{background:white;border:1px solid #d9e2eb;border-radius:12px;padding:22px;margin:22px 0}button,select{font:inherit;padding:8px 14px;margin-right:12px;border:1px solid #9db3c2;border-radius:5px}button{background:#176276;color:white;cursor:pointer}button:disabled{opacity:.5}label{display:inline-block;margin:8px 0}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:right;padding:10px;border-bottom:1px solid #e2e9ee}th:first-child,td:first-child{text-align:left}.scroll{overflow:auto}.muted{color:#526c80}#error{color:#a32929;white-space:pre-wrap}#summary{font-size:20px;font-weight:650}small{font-size:13px}
+</style>
+<main>
+<p class="muted">MOCTREE / COMPARISON LAB</p>
+<h1>MOctree × MoonSTRtree 0.2.2</h1>
+<p>三维 AABB · 相同数据与闭合边界 · release WASM · 同一块传输包装器</p>
+<section>
+<button id="run">运行完整对照</button><button id="saved">查看已保存结果</button><button id="download" disabled>导出 JSON</button>
+<p id="status">准备就绪</p><p id="error"></p>
+<small>每批 8 条查询，计时包含输入及输出复制。保持页面前台，避免并行重载。完整对照可能需要数分钟。</small>
+</section>
+<section id="results" hidden>
+<p id="summary"></p>
+<label>分布 <select id="distribution"><option value="uniform">均匀随机</option><option value="cluster">双簇</option><option value="overlap">全重叠</option></select></label>
+<label>负载 <select id="scenario"><option value="selective">局部 AABB</option><option value="broad">全根 AABB</option></select></label>
+<label>输出 <select id="mode"><option value="cap64">最多 64 个 ID</option><option value="count">只计数</option><option value="all">全部 ID</option></select></label>
+<p class="muted">毫秒 / 批次。所有模式都返回准确命中总数；只计数不输出 ID。</p>
+<div class="scroll"><table><thead><tr><th>对象数 / 后端</th><th>p50</th><th>p95</th><th>p99</th><th>命中 / 写入</th></tr></thead><tbody id="rows"></tbody></table></div>
+<h2>构建与资源</h2><div id="builds" class="scroll"></div><p id="resources"></p>
+</section>
+<section><strong>如何解读</strong>
+<p>MoonSTRtree 三维限量输出先调用完整查询再截取；只计数使用其专用计数接口。MOctree 使用定长缓冲并继续计数。比较的是现有公开 API 的端到端成本，不是纯遍历指令成本。</p>
+<p>STR 使用内部序号映射外部 UInt32 ID；没有公开访问计数的字段记为 null。线性内存数值是已分配容量，不是活跃堆或进程峰值。节点预算仅作用于 MOctree，不能据此认为双方内存预算相同。</p>
+<a href="index.html?saved">原始后端验收与火焰图</a></section>
+</main>
+<script type="module" src="compare-page.mjs"></script>
+</html>

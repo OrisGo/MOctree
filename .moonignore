@@ -1,0 +1,11 @@
+# Keep development and measurement tools in Git, not in the library archive.
+.github/
+AGENTS.md
+README.md
+benchmarks/
+scripts/
+*.mbtx
+**/integration.mjs
+docs/*
+!docs/api.md
+!docs/package-readme.md

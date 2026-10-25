@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { fold } from './fold.mjs';
+import { scan, verify, summary } from './data.mjs';
+// Analytic geometry checks, independent of the MoonBit predicates.
+const data={ids:new Uint32Array([0,0xffffffff]),bounds:new Float64Array([0,0,0,1,1,1,2,2,2,2,2,2])};
+const job={kind:'aabb',coordinates:new Float64Array([1,1,1,2,2,2]),ranges:new Int32Array([0,2]),outputCapacity:2,batchSize:1};
+assert.deepEqual([...scan(data,job).ids],[0,0xffffffff]);
+job.kind='ray';job.coordinates=new Float64Array([-1,0,0,1,-0,0,0,3]);
+assert.equal(scan(data,job).reports[0].totalHits,1);
+job.coordinates=new Float64Array([-1,3,0,1,0,0,0,3]);
+assert.equal(scan(data,job).reports[0].totalHits,0);
+job.coordinates=new Float64Array([1,1,1,1,1,1,0,0]);
+assert.equal(scan(data,job).reports[0].totalHits,1);
+const oracle=scan(data,job,true);verify(scan(data,job),oracle,job);
+assert.throws(()=>verify({ids:new Uint32Array([123]),reports:oracle.reports},oracle,job),/ID/);
+assert.deepEqual(summary([4,1,3,2]),{samples:4,min:1,p50:2,p95:4,p99:4,max:4});
+const node=(id,name,children=[])=>({id,callFrame:{functionName:name,url:'',lineNumber:0},children});
+const folded=fold({nodes:[node(1,'root',[2,3]),node(2,'f;percent%'),node(3,'(garbage collector)')],samples:[2,2,3]});
+assert.equal(folded.samples,3);
+assert.ok(folded.text.includes('root;f%3Bpercent%25 2'));
+assert.ok(folded.text.includes('root;(garbage collector) 1'));
+assert.throws(()=>fold({nodes:[],samples:[]}),/no samples/);
+assert.throws(()=>fold({nodes:[node(1,'root')],samples:[2]}),/invalid/);
+console.log('benchmark oracle, quantiles and folded-profile conversion passed');
