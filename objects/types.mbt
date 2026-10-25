@@ -45,7 +45,6 @@ priv struct Node {
 pub struct StaticObjectIndex {
   priv entries : Array[Entry]
   priv nodes : Array[Node]
-  priv order : Array[Int32]
   priv summary : IndexStats
 }
 

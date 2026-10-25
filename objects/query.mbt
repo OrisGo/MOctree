@@ -67,13 +67,13 @@ fn StaticObjectIndex::run_query(
         node.subtree_count
       }
       for i in node.start..<(node.start + count) {
-        output[offset + written] = self.entries[self.order[i]].id
+        output[offset + written] = self.entries[i].id
         written += 1
       }
       // Descendants need neither node pruning nor object intersection tests.
     } else if region.intersects(node.bounds) {
       for i in node.start..<(node.start + node.count) {
-        let entry = self.entries[self.order[i]]
+        let entry = self.entries[i]
         tested += 1
         if region.intersects(entry.bounds) {
           hits += 1

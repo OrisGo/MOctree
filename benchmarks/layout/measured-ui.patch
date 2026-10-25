@@ -1,0 +1,18 @@
+diff --git b/benchmarks/browser/layout-run.mjs a/benchmarks/browser/layout-run.mjs
+index 1679be0..88a49e4 100644
+--- b/benchmarks/browser/layout-run.mjs
++++ a/benchmarks/browser/layout-run.mjs
+@@ -36 +36 @@ try {
+-  const progress=setInterval(()=>{browser.evaluate('document.querySelector("#status").textContent').then(console.log).catch(()=>{});},15000);
++  const progress=setInterval(()=>{browser.evaluate('document.querySelector("#status").textLayout').then(console.log).catch(()=>{});},15000);
+diff --git b/benchmarks/browser/layout.html a/benchmarks/browser/layout.html
+index 2f968f3..220b927 100644
+--- b/benchmarks/browser/layout.html
++++ a/benchmarks/browser/layout.html
+@@ -7,3 +7,3 @@ window.octreeBench={start:async(options)=>{
+-  const result=await runLayout(options,s=>document.querySelector('#status').textContent=s);
+-  document.querySelector('#status').textContent='完成';
+-  document.querySelector('#result').textContent=JSON.stringify({rows:result.rows.length,acceptance:result.acceptance},null,2);
++  const result=await runLayout(options,s=>document.querySelector('#status').textLayout=s);
++  document.querySelector('#status').textLayout='完成';
++  document.querySelector('#result').textLayout=JSON.stringify({rows:result.rows.length,acceptance:result.acceptance},null,2);
