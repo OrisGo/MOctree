@@ -1,0 +1,14 @@
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query 284
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__i32;wasm-to-js;output_i32 [client.mjs:77] 5
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__u32;wasm-to-js;output_u32 [client.mjs:73] 183
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__u32;wasm-to-js;output_u32 [client.mjs:73];view [client.mjs:59];get buffer 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query 2289
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query;_M0MPB18UninitializedArray23make__and__blit_2einnerGiE 22
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query;_M0MPB18UninitializedArray23make__and__blit_2einnerGiE;moonbit.gc.free 2
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;moonbit.decref;moonbit.gc.free 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;moonbit.array_length 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;wasm-to-js 1
+(root);(garbage collector) 2
+(root);(idle) 1
+(root);(program) 2

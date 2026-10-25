@@ -1,0 +1,651 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="1400" height="486" viewBox="0 0 1400 486" onload="init()">
+<defs>
+<linearGradient id="background" y1="0" y2="1" x1="0" x2="0">
+<stop stop-color="#eeeeee" offset="5%"/>
+<stop stop-color="#eeeeb0" offset="95%"/>
+</linearGradient>
+</defs>
+<style type="text/css">
+text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+#search, #ignorecase { opacity:0.1; cursor:pointer; }
+#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+#title { text-anchor:middle; font-size:17px }
+#unzoom { cursor:pointer; }
+#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+.hide { display:none; }
+.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript"><![CDATA[
+var XPAD = 10; var FONTSIZE = 12; var FONTWIDTH = 0.6; var INVERTED = false; var SEARCHCOLOR = "rgb(230,0,230)";
+"use strict";
+var SVG, FRAMES, DETAILS, SEARCHBTN, UNZBTN, MATCHED, ICBTN;
+var orig = [], searching = false, term = null, ignorecase = false;
+var canvasW = 0;
+function init() {
+  SVG = document.getElementsByTagName("svg")[0];
+  FRAMES = document.getElementById("frames").children;
+  DETAILS = document.getElementById("details").firstChild;
+  SEARCHBTN = document.getElementById("search");
+  UNZBTN = document.getElementById("unzoom");
+  MATCHED = document.getElementById("matched");
+  ICBTN = document.getElementById("ignorecase");
+  canvasW = SVG.width.baseVal.value;
+  for (var i = 0; i < FRAMES.length; i++) {
+    var r = rectOf(FRAMES[i]);
+    orig.push({x:num(r,"x"), y:num(r,"y"), w:num(r,"width"), fill:r.getAttribute("fill")});
+  }
+  wire();
+}
+function num(el, a) { return parseFloat(el.getAttribute(a)); }
+function rectOf(g) { return g.querySelector("rect"); }
+function textOf(g) { return g.querySelector("text"); }
+function nameOf(g) { return g.getAttribute("data-name") || ""; }
+function indexOf(g) { return Array.prototype.indexOf.call(FRAMES,g); }
+function groupOf(n) {
+  while(n && n.parentNode && n.parentNode.id !== "frames") n=n.parentNode;
+  return n && n.parentNode && n.parentNode.id === "frames" ? n : null;
+}
+function fitText(g,x,w) {
+  var t=textOf(g); if(!t) return;
+  var full=nameOf(g), room=w-6, chars=Math.floor(room/(FONTSIZE*FONTWIDTH));
+  var points=Array.from(full);
+  t.textContent=chars<2 ? "" : chars>=points.length ? full : points.slice(0,chars-2).join("")+"..";
+}
+function setGeom(g,x,w) {
+  var r=rectOf(g),t=textOf(g); r.setAttribute("x",x); r.setAttribute("width",w);
+  if(t) t.setAttribute("x",x+3); fitText(g,x,w);
+}
+function applyZoom(i) {
+  if(i<0 || orig[i].w<=0) return;
+  var base=orig[i], xmin=base.x, xmax=base.x+base.w;
+  var ratio=(canvasW-2*XPAD)/base.w, fudge=0.0001;
+  UNZBTN.classList.remove("hide");
+  for(var k=0;k<FRAMES.length;k++) {
+    var g=FRAMES[k],o=orig[k];
+    g.classList.remove("hide"); g.classList.remove("parent");
+    var ancestor=INVERTED ? o.y<base.y : o.y>base.y;
+    if(ancestor) {
+      if(o.x<=xmin+fudge && o.x+o.w+fudge>=xmax) {
+        g.classList.add("parent"); setGeom(g,XPAD,canvasW-2*XPAD);
+      } else g.classList.add("hide");
+    } else if(o.x<xmin-fudge || o.x+o.w>xmax+fudge) g.classList.add("hide");
+    else setGeom(g,(o.x-xmin)*ratio+XPAD,o.w*ratio);
+  }
+  if(term!==null) doSearch();
+}
+function resetZoom() {
+  UNZBTN.classList.add("hide");
+  for(var k=0;k<FRAMES.length;k++) {
+    FRAMES[k].classList.remove("hide"); FRAMES[k].classList.remove("parent");
+    setGeom(FRAMES[k],orig[k].x,orig[k].w);
+  }
+  if(term!==null) doSearch();
+}
+function clearHighlight() {
+  for(var k=0;k<FRAMES.length;k++) rectOf(FRAMES[k]).setAttribute("fill",orig[k].fill);
+}
+function doSearch() {
+  if(term===null) return;
+  clearHighlight();
+  searching=true; SEARCHBTN.classList.add("show"); SEARCHBTN.firstChild.nodeValue="Reset Search";
+  MATCHED.classList.remove("hide");
+  var re;
+  try { re=new RegExp(term,ignorecase?"i":""); }
+  catch(e) { MATCHED.firstChild.nodeValue="Invalid regular expression"; return; }
+  var spans=[];
+  for(var k=0;k<FRAMES.length;k++) {
+    var g=FRAMES[k];
+    if(g.classList.contains("hide") || g.classList.contains("parent")) continue;
+    if(re.test(nameOf(g))) {
+      var r=rectOf(g), x=num(r,"x"), right=x+num(r,"width");
+      rectOf(g).setAttribute("fill",SEARCHCOLOR);
+      spans.push({x:Math.max(XPAD,x),right:Math.min(canvasW-XPAD,right)});
+    }
+  }
+  spans.sort(function(a,b){return a.x-b.x || b.right-a.right;});
+  var count=0,end=XPAD;
+  for(var j=0;j<spans.length;j++) {
+    var s=spans[j];
+    if(s.right>end) { count+=s.right-Math.max(end,s.x); end=s.right; }
+  }
+  var pct=Math.max(0,Math.min(100,100*count/(canvasW-2*XPAD)));
+  MATCHED.firstChild.nodeValue="Matched: "+(pct===100?100:pct.toFixed(1))+"%";
+}
+function resetSearch() {
+  searching=false; term=null; clearHighlight(); SEARCHBTN.classList.remove("show");
+  SEARCHBTN.firstChild.nodeValue="Search"; MATCHED.classList.add("hide"); MATCHED.firstChild.nodeValue=" ";
+}
+function searchPrompt() {
+  if(searching) {resetSearch();return;}
+  var t=prompt("Enter a regular expression; Ctrl-I toggles case sensitivity","");
+  if(t===null) return; term=t;doSearch();
+}
+function toggleIgnoreCase() {
+  ignorecase=!ignorecase; ICBTN.classList.toggle("show",ignorecase);
+  if(term!==null) doSearch();
+}
+function wire() {
+  window.addEventListener("click",function(e){
+    if(e.target.id==="unzoom") {resetZoom();return;}
+    if(e.target.id==="search") {searchPrompt();return;}
+    if(e.target.id==="ignorecase") {toggleIgnoreCase();return;}
+    var g=groupOf(e.target);if(g) applyZoom(indexOf(g));
+  });
+  window.addEventListener("mouseover",function(e){var g=groupOf(e.target);if(g) DETAILS.nodeValue="Function: "+g.querySelector("title").textContent;});
+  window.addEventListener("mouseout",function(e){if(groupOf(e.target)) DETAILS.nodeValue=" ";});
+  window.addEventListener("keydown",function(e){
+    if(e.keyCode===114 || (e.ctrlKey && e.keyCode===70)){e.preventDefault();searchPrompt();}
+    else if(e.ctrlKey && e.keyCode===73){e.preventDefault();toggleIgnoreCase();}
+  });
+}
+]]></script>
+<rect x="0" y="0" width="1400" height="486" fill="url(#background)"/>
+<text id="title" x="700" y="24">Flame Graph</text>
+<text id="unzoom" x="10" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1290" y="24">Search</text>
+<text id="ignorecase" x="1374" y="24">ic</text>
+<text id="details" x="10" y="469"> </text>
+<text id="matched" x="1290" y="469"> </text>
+<g id="frames">
+<g data-name="(root)"><title>(root) — 4,870 (100.0%)</title><rect x="10" y="436" width="1380" height="15" fill="rgb(220,70,16)" rx="2" ry="2"/><text x="13" y="449">(root)</text></g>
+<g data-name="(anonymous)"><title>(anonymous) — 4,848 (99.5%)</title><rect x="10" y="420" width="1373.8" height="15" fill="rgb(223,87,20)" rx="2" ry="2"/><text x="13" y="433">(anonymous)</text></g>
+<g data-name="work [diagnostic-profile.mjs:24]"><title>work [diagnostic-profile.mjs:24] — 4,848 (99.5%)</title><rect x="10" y="404" width="1373.8" height="15" fill="rgb(233,130,31)" rx="2" ry="2"/><text x="13" y="417">work [diagnostic-profile.mjs:24]</text></g>
+<g data-name="build [client.mjs:126]"><title>build [client.mjs:126] — 4,847 (99.5%)</title><rect x="10" y="388" width="1373.5" height="15" fill="rgb(237,149,35)" rx="2" ry="2"/><text x="13" y="401">build [client.mjs:126]</text></g>
+<g data-name="run [client.mjs:107]"><title>run [client.mjs:107] — 4,846 (99.5%)</title><rect x="10" y="372" width="1373.2" height="15" fill="rgb(252,216,51)" rx="2" ry="2"/><text x="13" y="385">run [client.mjs:107]</text></g>
+<g data-name="(anonymous) [client.mjs:127]"><title>(anonymous) [client.mjs:127] — 4,846 (99.5%)</title><rect x="10" y="356" width="1373.2" height="15" fill="rgb(252,217,52)" rx="2" ry="2"/><text x="13" y="369">(anonymous) [client.mjs:127]</text></g>
+<g data-name="execute [client.mjs:115]"><title>execute [client.mjs:115] — 4,846 (99.5%)</title><rect x="10" y="340" width="1373.2" height="15" fill="rgb(234,133,32)" rx="2" ry="2"/><text x="13" y="353">execute [client.mjs:115]</text></g>
+<g data-name="js-to-wasm:iii:i"><title>js-to-wasm:iii:i — 4,846 (99.5%)</title><rect x="10" y="324" width="1373.2" height="15" fill="rgb(233,130,31)" rx="2" ry="2"/><text x="13" y="337">js-to-wasm:iii:i</text></g>
+<g data-name="_M0FP26orisgo19strtree_2dbenchmark5build"><title>_M0FP26orisgo19strtree_2dbenchmark5build — 4,846 (99.5%)</title><rect x="10" y="308" width="1373.2" height="15" fill="rgb(238,155,37)" rx="2" ry="2"/><text x="13" y="321">_M0FP26orisgo19strtree_2dbenchmark5build</text></g>
+<g data-name="_M0MP49LING7167113moon__strtree3src3api9StrTree3D13build_2einner"><title>_M0MP49LING7167113moon__strtree3src3api9StrTree3D13build_2einner — 4,689 (96.3%)</title><rect x="10" y="292" width="1328.7" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="13" y="305">_M0MP49LING7167113moon__strtree3src3api9StrTree3D13build_2einner</text></g>
+<g data-name="_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D13build_2einner"><title>_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D13build_2einner — 4,684 (96.2%)</title><rect x="10" y="276" width="1327.3" height="15" fill="rgb(246,192,46)" rx="2" ry="2"/><text x="13" y="289">_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D13build_2einner</text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing19pack__str3d_2einner"><title>_M0FP59LING7167113moon__strtree3src4core7packing19pack__str3d_2einner — 4,075 (83.7%)</title><rect x="10" y="260" width="1154.7" height="15" fill="rgb(209,19,4)" rx="2" ry="2"/><text x="13" y="273">_M0FP59LING7167113moon__strtree3src4core7packing19pack__str3d_2einner</text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodes"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodes — 1,725 (35.4%)</title><rect x="10" y="244" width="488.8" height="15" fill="rgb(243,176,42)" rx="2" ry="2"/><text x="13" y="257"></text></g>
+<g data-name="_M0MPC15array5Array8sort__byGiE"><title>_M0MPC15array5Array8sort__byGiE — 770 (15.8%)</title><rect x="10" y="228" width="218.2" height="15" fill="rgb(253,221,52)" rx="2" ry="2"/><text x="13" y="241"></text></g>
+<g data-name="_M0MPC15array12MutArrayView8sort__byGiE"><title>_M0MPC15array12MutArrayView8sort__byGiE — 770 (15.8%)</title><rect x="10" y="212" width="218.2" height="15" fill="rgb(248,199,47)" rx="2" ry="2"/><text x="13" y="225"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 770 (15.8%)</title><rect x="10" y="196" width="218.2" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="13" y="209"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 531 (10.9%)</title><rect x="10" y="180" width="150.5" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="13" y="193"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 376 (7.7%)</title><rect x="10" y="164" width="106.5" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="13" y="177"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 264 (5.4%)</title><rect x="10" y="148" width="74.8" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="13" y="161"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 186 (3.8%)</title><rect x="10" y="132" width="52.7" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="13" y="145"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 104 (2.1%)</title><rect x="10" y="116" width="29.5" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="13" y="129"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 50 (1.0%)</title><rect x="10" y="100" width="14.2" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="13" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 25 (0.5%)</title><rect x="10" y="84" width="7.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="13" y="97"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 16 (0.3%)</title><rect x="17.1" y="84" width="4.5" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="20.1" y="97"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 8 (0.2%)</title><rect x="17.1" y="68" width="2.3" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="20.1" y="81"></text></g>
+<g data-name="(self)"><title>(self) — 7 (0.1%)</title><rect x="17.1" y="52" width="2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="20.1" y="65"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 1 (0.0%)</title><rect x="19.1" y="52" width="0.3" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="22.1" y="65"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="19.1" y="36" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="22.1" y="49"></text></g>
+<g data-name="(self)"><title>(self) — 4 (0.1%)</title><rect x="19.4" y="68" width="1.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="22.4" y="81"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 3 (0.1%)</title><rect x="20.5" y="68" width="0.8" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="23.5" y="81"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255 — 3 (0.1%)</title><rect x="20.5" y="52" width="0.8" height="15" fill="rgb(217,59,14)" rx="2" ry="2"/><text x="23.5" y="65"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGiE"><title>_M0FPB28fixed__try__bubble__sort__byGiE — 1 (0.0%)</title><rect x="21.3" y="68" width="0.3" height="15" fill="rgb(226,98,23)" rx="2" ry="2"/><text x="24.3" y="81"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255 — 1 (0.0%)</title><rect x="21.3" y="52" width="0.3" height="15" fill="rgb(217,59,14)" rx="2" ry="2"/><text x="24.3" y="65"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 6 (0.1%)</title><rect x="21.6" y="84" width="1.7" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="24.6" y="97"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 3 (0.1%)</title><rect x="21.6" y="68" width="0.9" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="24.6" y="81"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="22.5" y="68" width="0.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="25.5" y="81"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="23" y="68" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="26" y="81"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="23.3" y="84" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="26.3" y="97"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="23.3" y="68" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="26.3" y="81"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="23.6" y="84" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="26.6" y="97"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGiE"><title>_M0FPB28fixed__try__bubble__sort__byGiE — 1 (0.0%)</title><rect x="23.9" y="84" width="0.3" height="15" fill="rgb(226,98,23)" rx="2" ry="2"/><text x="26.9" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 44 (0.9%)</title><rect x="24.2" y="100" width="12.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="27.2" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 8 (0.2%)</title><rect x="36.6" y="100" width="2.3" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="39.6" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="36.6" y="84" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="39.6" y="97"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.0%)</title><rect x="37.2" y="84" width="0.6" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="40.2" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="37.2" y="68" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="40.2" y="81"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="37.5" y="68" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="40.5" y="81"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 2 (0.0%)</title><rect x="37.8" y="84" width="0.5" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="40.8" y="97"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="38.3" y="84" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="41.3" y="97"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255 — 1 (0.0%)</title><rect x="38.6" y="84" width="0.3" height="15" fill="rgb(217,59,14)" rx="2" ry="2"/><text x="41.6" y="97"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 1 (0.0%)</title><rect x="38.9" y="100" width="0.3" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="41.9" y="113"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGiE"><title>_M0FPB28fixed__try__bubble__sort__byGiE — 1 (0.0%)</title><rect x="39.2" y="100" width="0.3" height="15" fill="rgb(226,98,23)" rx="2" ry="2"/><text x="42.2" y="113"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255 — 1 (0.0%)</title><rect x="39.2" y="84" width="0.3" height="15" fill="rgb(217,59,14)" rx="2" ry="2"/><text x="42.2" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 71 (1.5%)</title><rect x="39.5" y="116" width="20.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="42.5" y="129"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 7 (0.1%)</title><rect x="59.6" y="116" width="2" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="62.6" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.1%)</title><rect x="59.6" y="100" width="0.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="62.6" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 2 (0.0%)</title><rect x="60.4" y="100" width="0.6" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="63.4" y="113"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="61" y="100" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="64" y="113"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255 — 1 (0.0%)</title><rect x="61.3" y="100" width="0.3" height="15" fill="rgb(217,59,14)" rx="2" ry="2"/><text x="64.3" y="113"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="61.6" y="116" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="64.6" y="129"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="61.9" y="116" width="0.2" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="64.9" y="129"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGiE"><title>_M0MPC15array12MutArrayView4swapGiE — 1 (0.0%)</title><rect x="62.1" y="116" width="0.3" height="15" fill="rgb(250,208,49)" rx="2" ry="2"/><text x="65.1" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255 — 1 (0.0%)</title><rect x="62.4" y="116" width="0.3" height="15" fill="rgb(217,59,14)" rx="2" ry="2"/><text x="65.4" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 65 (1.3%)</title><rect x="62.7" y="132" width="18.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="65.7" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 10 (0.2%)</title><rect x="81.1" y="132" width="2.9" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="84.1" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 5 (0.1%)</title><rect x="81.1" y="116" width="1.4" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="84.1" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="82.5" y="116" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="85.5" y="129"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="83.1" y="116" width="0.6" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="86.1" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="83.1" y="100" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="86.1" y="113"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="83.4" y="100" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="86.4" y="113"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="83.7" y="116" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="86.7" y="129"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="84" y="132" width="0.2" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="87" y="145"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGiE"><title>_M0FPB28fixed__try__bubble__sort__byGiE — 1 (0.0%)</title><rect x="84.2" y="132" width="0.3" height="15" fill="rgb(226,98,23)" rx="2" ry="2"/><text x="87.2" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255 — 1 (0.0%)</title><rect x="84.2" y="116" width="0.3" height="15" fill="rgb(217,59,14)" rx="2" ry="2"/><text x="87.2" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255 — 1 (0.0%)</title><rect x="84.5" y="132" width="0.3" height="15" fill="rgb(217,59,14)" rx="2" ry="2"/><text x="87.5" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 106 (2.2%)</title><rect x="84.8" y="148" width="30" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="87.8" y="161"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 4 (0.1%)</title><rect x="114.8" y="148" width="1.2" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="117.8" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="114.8" y="132" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="117.8" y="145"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.0%)</title><rect x="115.1" y="132" width="0.3" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="118.1" y="145"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="115.4" y="132" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="118.4" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 1 (0.0%)</title><rect x="115.7" y="132" width="0.3" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="118.7" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255"><title>_M0FP59LING7167113moon__strtree3src4core7packing20sort__level3d__nodesC1932l255 — 2 (0.0%)</title><rect x="116" y="148" width="0.5" height="15" fill="rgb(217,59,14)" rx="2" ry="2"/><text x="119" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 154 (3.2%)</title><rect x="116.5" y="164" width="43.7" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="119.5" y="177"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="160.2" y="164" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="163.2" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 239 (4.9%)</title><rect x="160.5" y="180" width="67.7" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="163.5" y="193">(self)</text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3d"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3d — 688 (14.1%)</title><rect x="228.2" y="228" width="194.9" height="15" fill="rgb(250,208,49)" rx="2" ry="2"/><text x="231.2" y="241"></text></g>
+<g data-name="_M0MPC15array12MutArrayView8sort__byGiE"><title>_M0MPC15array12MutArrayView8sort__byGiE — 688 (14.1%)</title><rect x="228.2" y="212" width="194.9" height="15" fill="rgb(248,199,47)" rx="2" ry="2"/><text x="231.2" y="225"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 679 (13.9%)</title><rect x="228.2" y="196" width="192.4" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="231.2" y="209"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 335 (6.9%)</title><rect x="228.2" y="180" width="94.9" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="231.2" y="193"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 316 (6.5%)</title><rect x="323.1" y="180" width="89.6" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="326.1" y="193"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 217 (4.5%)</title><rect x="323.1" y="164" width="61.5" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="326.1" y="177"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 123 (2.5%)</title><rect x="323.1" y="148" width="34.9" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="326.1" y="161"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 40 (0.8%)</title><rect x="323.1" y="132" width="11.4" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="326.1" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 18 (0.4%)</title><rect x="323.1" y="116" width="5.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="326.1" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 8 (0.2%)</title><rect x="328.2" y="116" width="2.3" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="331.2" y="129"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 7 (0.1%)</title><rect x="330.5" y="116" width="2" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="333.5" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 4 (0.1%)</title><rect x="330.5" y="100" width="1.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="333.5" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 2 (0.0%)</title><rect x="331.6" y="100" width="0.6" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="334.6" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="331.6" y="84" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="334.6" y="97"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 1 (0.0%)</title><rect x="331.9" y="84" width="0.3" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="334.9" y="97"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 1 (0.0%)</title><rect x="332.2" y="100" width="0.3" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="335.2" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 4 (0.1%)</title><rect x="332.5" y="116" width="1.1" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="335.5" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 2 (0.0%)</title><rect x="332.5" y="100" width="0.5" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="335.5" y="113"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="333" y="100" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="336" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 1 (0.0%)</title><rect x="333.3" y="100" width="0.3" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="336.3" y="113"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="333.6" y="116" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="336.6" y="129"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGiE"><title>_M0MPC15array12MutArrayView4swapGiE — 1 (0.0%)</title><rect x="333.9" y="116" width="0.3" height="15" fill="rgb(250,208,49)" rx="2" ry="2"/><text x="336.9" y="129"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGiE"><title>_M0FPB28fixed__try__bubble__sort__byGiE — 1 (0.0%)</title><rect x="334.2" y="116" width="0.3" height="15" fill="rgb(226,98,23)" rx="2" ry="2"/><text x="337.2" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 34 (0.7%)</title><rect x="334.5" y="132" width="9.6" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="337.5" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 32 (0.7%)</title><rect x="344.1" y="132" width="9.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="347.1" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 11 (0.2%)</title><rect x="353.2" y="132" width="3.1" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="356.2" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 4 (0.1%)</title><rect x="353.2" y="116" width="1.1" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="356.2" y="129"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.0%)</title><rect x="354.3" y="116" width="0.6" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="357.3" y="129"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 2 (0.0%)</title><rect x="354.9" y="116" width="0.5" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="357.9" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 2 (0.0%)</title><rect x="354.9" y="100" width="0.5" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="357.9" y="113"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="355.4" y="116" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="358.4" y="129"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="355.7" y="116" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="358.7" y="129"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.0%)</title><rect x="356" y="116" width="0.3" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="359" y="129"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 4 (0.1%)</title><rect x="356.3" y="132" width="1.1" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="359.3" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.1%)</title><rect x="356.3" y="116" width="0.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="359.3" y="129"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="357.1" y="116" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="360.1" y="129"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGiE"><title>_M0FPB28fixed__try__bubble__sort__byGiE — 2 (0.0%)</title><rect x="357.4" y="132" width="0.6" height="15" fill="rgb(226,98,23)" rx="2" ry="2"/><text x="360.4" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 46 (0.9%)</title><rect x="358" y="148" width="13" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="361" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 34 (0.7%)</title><rect x="371" y="148" width="9.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="374" y="161"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 8 (0.2%)</title><rect x="380.6" y="148" width="2.3" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="383.6" y="161"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 4 (0.1%)</title><rect x="380.6" y="132" width="1.2" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="383.6" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 3 (0.1%)</title><rect x="380.6" y="116" width="0.9" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="383.6" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="381.5" y="116" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="384.5" y="129"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="381.8" y="132" width="0.5" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="384.8" y="145"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.0%)</title><rect x="382.3" y="132" width="0.3" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="385.3" y="145"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="382.6" y="132" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="385.6" y="145"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 3 (0.1%)</title><rect x="382.9" y="148" width="0.9" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="385.9" y="161"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 2 (0.0%)</title><rect x="382.9" y="132" width="0.6" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="385.9" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="383.5" y="132" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="386.5" y="145"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.0%)</title><rect x="383.8" y="148" width="0.5" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="386.8" y="161"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGiE"><title>_M0MPC15array12MutArrayView4swapGiE — 1 (0.0%)</title><rect x="384.3" y="148" width="0.3" height="15" fill="rgb(250,208,49)" rx="2" ry="2"/><text x="387.3" y="161"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 70 (1.4%)</title><rect x="384.6" y="164" width="19.8" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="387.6" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 22 (0.5%)</title><rect x="404.4" y="164" width="6.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="407.4" y="177"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 7 (0.1%)</title><rect x="410.7" y="164" width="2" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="413.7" y="177"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 4 (0.1%)</title><rect x="410.7" y="148" width="1.1" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="413.7" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.1%)</title><rect x="410.7" y="132" width="0.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="413.7" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 1 (0.0%)</title><rect x="411.5" y="132" width="0.3" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="414.5" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 2 (0.0%)</title><rect x="411.8" y="148" width="0.6" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="414.8" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="412.4" y="148" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="415.4" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 23 (0.5%)</title><rect x="412.7" y="180" width="6.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="415.7" y="193"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 5 (0.1%)</title><rect x="419.2" y="180" width="1.4" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="422.2" y="193"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 4 (0.1%)</title><rect x="419.2" y="164" width="1.1" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="422.2" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 3 (0.1%)</title><rect x="419.2" y="148" width="0.8" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="422.2" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="420" y="148" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="423" y="161"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="420.3" y="164" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="423.3" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__nodes__by__y__3dC1913l225 — 9 (0.2%)</title><rect x="420.6" y="196" width="2.5" height="15" fill="rgb(250,210,50)" rx="2" ry="2"/><text x="423.6" y="209"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__z"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__z — 267 (5.5%)</title><rect x="423.1" y="228" width="75.7" height="15" fill="rgb(222,80,19)" rx="2" ry="2"/><text x="426.1" y="241"></text></g>
+<g data-name="_M0MPC15array12MutArrayView8sort__byGiE"><title>_M0MPC15array12MutArrayView8sort__byGiE — 267 (5.5%)</title><rect x="423.1" y="212" width="75.7" height="15" fill="rgb(248,199,47)" rx="2" ry="2"/><text x="426.1" y="225"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 261 (5.4%)</title><rect x="423.1" y="196" width="74" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="426.1" y="209"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 122 (2.5%)</title><rect x="423.1" y="180" width="34.6" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="426.1" y="193"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 51 (1.0%)</title><rect x="423.1" y="164" width="14.5" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="426.1" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 28 (0.6%)</title><rect x="423.1" y="148" width="8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="426.1" y="161"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGiE"><title>_M0FPB22fixed__quick__sort__byGiE — 9 (0.2%)</title><rect x="431.1" y="148" width="2.5" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="434.1" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 7 (0.1%)</title><rect x="431.1" y="132" width="2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="434.1" y="145"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="433.1" y="132" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="436.1" y="145"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGiE"><title>_M0FPB28fixed__try__bubble__sort__byGiE — 1 (0.0%)</title><rect x="433.4" y="132" width="0.2" height="15" fill="rgb(226,98,23)" rx="2" ry="2"/><text x="436.4" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199 — 7 (0.1%)</title><rect x="433.6" y="148" width="2" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="436.6" y="161"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 5 (0.1%)</title><rect x="435.6" y="148" width="1.4" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="438.6" y="161"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199 — 2 (0.0%)</title><rect x="435.6" y="132" width="0.6" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="438.6" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="436.2" y="132" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="439.2" y="145"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="436.5" y="132" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="439.5" y="145"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.0%)</title><rect x="436.8" y="132" width="0.2" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="439.8" y="145"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="437" y="148" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="440" y="161"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGiE"><title>_M0FPB28fixed__try__bubble__sort__byGiE — 1 (0.0%)</title><rect x="437.3" y="148" width="0.3" height="15" fill="rgb(226,98,23)" rx="2" ry="2"/><text x="440.3" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 31 (0.6%)</title><rect x="437.6" y="164" width="8.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="440.6" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199 — 27 (0.6%)</title><rect x="446.4" y="164" width="7.6" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="449.4" y="177"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 10 (0.2%)</title><rect x="454" y="164" width="2.9" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="457" y="177"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 3 (0.1%)</title><rect x="454" y="148" width="0.9" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="457" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="454" y="132" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="457" y="145"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="454.6" y="132" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="457.6" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 3 (0.1%)</title><rect x="454.9" y="148" width="0.8" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="457.9" y="161"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199 — 3 (0.1%)</title><rect x="454.9" y="132" width="0.8" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="457.9" y="145"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="455.7" y="148" width="0.6" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="458.7" y="161"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199 — 2 (0.0%)</title><rect x="456.3" y="148" width="0.6" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="459.3" y="161"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.0%)</title><rect x="456.9" y="164" width="0.5" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="459.9" y="177"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGiE"><title>_M0FPB28fixed__try__bubble__sort__byGiE — 1 (0.0%)</title><rect x="457.4" y="164" width="0.3" height="15" fill="rgb(226,98,23)" rx="2" ry="2"/><text x="460.4" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199 — 102 (2.1%)</title><rect x="457.7" y="180" width="28.9" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="460.7" y="193"></text></g>
+<g data-name="(self)"><title>(self) — 22 (0.5%)</title><rect x="486.6" y="180" width="6.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="489.6" y="193"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGiE"><title>_M0FPB24fixed__choose__pivot__byGiE — 11 (0.2%)</title><rect x="492.9" y="180" width="3.1" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="495.9" y="193"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.1%)</title><rect x="492.9" y="164" width="0.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="495.9" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199 — 3 (0.1%)</title><rect x="493.7" y="164" width="0.9" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="496.7" y="177"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="494.6" y="164" width="0.5" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="497.6" y="177"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 2 (0.0%)</title><rect x="495.1" y="164" width="0.6" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="498.1" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199 — 2 (0.0%)</title><rect x="495.1" y="148" width="0.6" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="498.1" y="161"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="495.7" y="164" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="498.7" y="177"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 3 (0.1%)</title><rect x="496" y="180" width="0.8" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="499" y="193"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 3 (0.1%)</title><rect x="496" y="164" width="0.8" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="499" y="177"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="496.8" y="180" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="499.8" y="193"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__nodes__by__zC1894l199 — 6 (0.1%)</title><rect x="497.1" y="196" width="1.7" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="500.1" y="209"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__items"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__items — 1,662 (34.1%)</title><rect x="498.8" y="244" width="471" height="15" fill="rgb(223,86,20)" rx="2" ry="2"/><text x="501.8" y="257"></text></g>
+<g data-name="_M0MPC15array5Array8sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array5Array8sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 792 (16.3%)</title><rect x="498.8" y="228" width="224.4" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="501.8" y="241"></text></g>
+<g data-name="_M0MPC15array12MutArrayView8sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView8sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 792 (16.3%)</title><rect x="498.8" y="212" width="224.4" height="15" fill="rgb(217,57,13)" rx="2" ry="2"/><text x="501.8" y="225"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 791 (16.2%)</title><rect x="498.8" y="196" width="224.2" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="501.8" y="209"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 599 (12.3%)</title><rect x="498.8" y="180" width="169.7" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="501.8" y="193"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 367 (7.5%)</title><rect x="498.8" y="164" width="104" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="501.8" y="177"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 247 (5.1%)</title><rect x="498.8" y="148" width="70" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="501.8" y="161"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 175 (3.6%)</title><rect x="498.8" y="132" width="49.6" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="501.8" y="145"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 106 (2.2%)</title><rect x="498.8" y="116" width="30" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="501.8" y="129"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 44 (0.9%)</title><rect x="498.8" y="100" width="12.5" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="501.8" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 19 (0.4%)</title><rect x="498.8" y="84" width="5.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="501.8" y="97"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143 — 10 (0.2%)</title><rect x="504.2" y="84" width="2.8" height="15" fill="rgb(254,229,54)" rx="2" ry="2"/><text x="507.2" y="97"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 9 (0.2%)</title><rect x="507" y="84" width="2.6" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="510" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 7 (0.1%)</title><rect x="507" y="68" width="2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="510" y="81"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="509" y="68" width="0.3" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="512" y="81"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="509.3" y="68" width="0.3" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="512.3" y="81"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 4 (0.1%)</title><rect x="509.6" y="84" width="1.1" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="512.6" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="509.6" y="68" width="0.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="512.6" y="81"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="510.1" y="68" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="513.1" y="81"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="510.4" y="68" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="513.4" y="81"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 2 (0.0%)</title><rect x="510.7" y="84" width="0.6" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="513.7" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 38 (0.8%)</title><rect x="511.3" y="100" width="10.7" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="514.3" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 13 (0.3%)</title><rect x="522" y="100" width="3.7" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="525" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 4 (0.1%)</title><rect x="522" y="84" width="1.2" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="525" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.1%)</title><rect x="523.2" y="84" width="0.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="526.2" y="97"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 2 (0.0%)</title><rect x="524" y="84" width="0.6" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="527" y="97"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143 — 2 (0.0%)</title><rect x="524.6" y="84" width="0.6" height="15" fill="rgb(254,229,54)" rx="2" ry="2"/><text x="527.6" y="97"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="525.2" y="84" width="0.2" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="528.2" y="97"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.0%)</title><rect x="525.4" y="84" width="0.3" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="528.4" y="97"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143 — 9 (0.2%)</title><rect x="525.7" y="100" width="2.6" height="15" fill="rgb(254,229,54)" rx="2" ry="2"/><text x="528.7" y="113"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 2 (0.0%)</title><rect x="528.3" y="100" width="0.5" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="531.3" y="113"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143 — 32 (0.7%)</title><rect x="528.8" y="116" width="9.1" height="15" fill="rgb(254,229,54)" rx="2" ry="2"/><text x="531.8" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 21 (0.4%)</title><rect x="537.9" y="116" width="6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="540.9" y="129"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 11 (0.2%)</title><rect x="543.9" y="116" width="3.1" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="546.9" y="129"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 7 (0.1%)</title><rect x="543.9" y="100" width="1.9" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="546.9" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="545.8" y="100" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="548.8" y="113"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="546.4" y="100" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="549.4" y="113"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.0%)</title><rect x="546.7" y="100" width="0.3" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="549.7" y="113"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="547" y="116" width="0.8" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="550" y="129"></text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 1 (0.0%)</title><rect x="547.8" y="116" width="0.3" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="550.8" y="129"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="547.8" y="100" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="550.8" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="548.1" y="116" width="0.3" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="551.1" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143 — 42 (0.9%)</title><rect x="548.4" y="132" width="11.9" height="15" fill="rgb(254,229,54)" rx="2" ry="2"/><text x="551.4" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 17 (0.3%)</title><rect x="560.3" y="132" width="4.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="563.3" y="145"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 7 (0.1%)</title><rect x="565.1" y="132" width="2" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="568.1" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 6 (0.1%)</title><rect x="567.1" y="132" width="1.7" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="570.1" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 4 (0.1%)</title><rect x="567.1" y="116" width="1.1" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="570.1" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="568.2" y="116" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="571.2" y="129"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="568.5" y="116" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="571.5" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143 — 62 (1.3%)</title><rect x="568.8" y="148" width="17.6" height="15" fill="rgb(254,229,54)" rx="2" ry="2"/><text x="571.8" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 40 (0.8%)</title><rect x="586.4" y="148" width="11.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="589.4" y="161"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 14 (0.3%)</title><rect x="597.7" y="148" width="4" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="600.7" y="161"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="601.7" y="148" width="0.8" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="604.7" y="161"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="601.7" y="132" width="0.8" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="604.7" y="145"></text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 1 (0.0%)</title><rect x="602.5" y="148" width="0.3" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="605.5" y="161"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="602.5" y="132" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="605.5" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143 — 171 (3.5%)</title><rect x="602.8" y="164" width="48.5" height="15" fill="rgb(254,229,54)" rx="2" ry="2"/><text x="605.8" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 45 (0.9%)</title><rect x="651.3" y="164" width="12.7" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="654.3" y="177"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 12 (0.2%)</title><rect x="664" y="164" width="3.4" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="667" y="177"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 4 (0.1%)</title><rect x="667.4" y="164" width="1.1" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="670.4" y="177"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="667.4" y="148" width="0.9" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="670.4" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="668.3" y="148" width="0.2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="671.3" y="161"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143 — 157 (3.2%)</title><rect x="668.5" y="180" width="44.5" height="15" fill="rgb(254,229,54)" rx="2" ry="2"/><text x="671.5" y="193"></text></g>
+<g data-name="(self)"><title>(self) — 23 (0.5%)</title><rect x="713" y="180" width="6.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="716" y="193"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 12 (0.2%)</title><rect x="719.6" y="180" width="3.4" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="722.6" y="193"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143"><title>_M0FP59LING7167113moon__strtree3src4core7packing18sort__str3d__itemsC1872l143 — 1 (0.0%)</title><rect x="723" y="196" width="0.2" height="15" fill="rgb(254,229,54)" rx="2" ry="2"/><text x="726" y="209"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3d"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3d — 575 (11.8%)</title><rect x="723.2" y="228" width="163" height="15" fill="rgb(242,170,40)" rx="2" ry="2"/><text x="726.2" y="241"></text></g>
+<g data-name="_M0MPC15array12MutArrayView8sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView8sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 575 (11.8%)</title><rect x="723.2" y="212" width="163" height="15" fill="rgb(217,57,13)" rx="2" ry="2"/><text x="726.2" y="225"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 569 (11.7%)</title><rect x="723.2" y="196" width="161.3" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="726.2" y="209"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 302 (6.2%)</title><rect x="723.2" y="180" width="85.6" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="726.2" y="193"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 214 (4.4%)</title><rect x="723.2" y="164" width="60.7" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="726.2" y="177"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 138 (2.8%)</title><rect x="723.2" y="148" width="39.1" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="726.2" y="161"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 65 (1.3%)</title><rect x="723.2" y="132" width="18.5" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="726.2" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 30 (0.6%)</title><rect x="723.2" y="116" width="8.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="726.2" y="129"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 21 (0.4%)</title><rect x="731.7" y="116" width="6" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="734.7" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 14 (0.3%)</title><rect x="731.7" y="100" width="4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="734.7" y="113"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 2 (0.0%)</title><rect x="735.7" y="100" width="0.6" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="738.7" y="113"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 2 (0.0%)</title><rect x="736.3" y="100" width="0.5" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="739.3" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 2 (0.0%)</title><rect x="736.8" y="100" width="0.6" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="739.8" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="736.8" y="84" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="739.8" y="97"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="737.1" y="84" width="0.3" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="740.1" y="97"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 1 (0.0%)</title><rect x="737.1" y="68" width="0.3" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="740.1" y="81"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="737.4" y="100" width="0.3" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="740.4" y="113"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 6 (0.1%)</title><rect x="737.7" y="116" width="1.7" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="740.7" y="129"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 4 (0.1%)</title><rect x="739.4" y="116" width="1.1" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="742.4" y="129"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 2 (0.0%)</title><rect x="739.4" y="100" width="0.6" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="742.4" y="113"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 2 (0.0%)</title><rect x="740" y="100" width="0.5" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="743" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="740" y="84" width="0.2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="743" y="97"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 1 (0.0%)</title><rect x="740.2" y="84" width="0.3" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="743.2" y="97"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="740.5" y="116" width="0.9" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="743.5" y="129"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB28fixed__try__bubble__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="741.4" y="116" width="0.3" height="15" fill="rgb(245,186,44)" rx="2" ry="2"/><text x="744.4" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 30 (0.6%)</title><rect x="741.7" y="132" width="8.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="744.7" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 27 (0.6%)</title><rect x="750.2" y="132" width="7.6" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="753.2" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 7 (0.1%)</title><rect x="757.8" y="132" width="2" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="760.8" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="757.8" y="116" width="0.9" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="760.8" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="757.8" y="100" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="760.8" y="113"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 1 (0.0%)</title><rect x="758.4" y="100" width="0.3" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="761.4" y="113"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="758.7" y="116" width="0.2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="761.7" y="129"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="758.9" y="116" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="761.9" y="129"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="759.2" y="116" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="762.2" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 1 (0.0%)</title><rect x="759.5" y="116" width="0.3" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="762.5" y="129"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 5 (0.1%)</title><rect x="759.8" y="132" width="1.4" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="762.8" y="145"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="761.2" y="132" width="0.6" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="764.2" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="761.2" y="116" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="764.2" y="129"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="761.5" y="116" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="764.5" y="129"></text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 1 (0.0%)</title><rect x="761.8" y="132" width="0.3" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="764.8" y="145"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="761.8" y="116" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="764.8" y="129"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB28fixed__try__bubble__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="762.1" y="132" width="0.2" height="15" fill="rgb(245,186,44)" rx="2" ry="2"/><text x="765.1" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 30 (0.6%)</title><rect x="762.3" y="148" width="8.5" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="765.3" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 26 (0.5%)</title><rect x="770.8" y="148" width="7.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="773.8" y="161"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 9 (0.2%)</title><rect x="778.2" y="148" width="2.6" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="781.2" y="161"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 5 (0.1%)</title><rect x="778.2" y="132" width="1.4" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="781.2" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="779.6" y="132" width="0.9" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="782.6" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="779.6" y="116" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="782.6" y="129"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 1 (0.0%)</title><rect x="780.2" y="116" width="0.3" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="783.2" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="780.5" y="132" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="783.5" y="145"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 9 (0.2%)</title><rect x="780.8" y="148" width="2.5" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="783.8" y="161"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="783.3" y="148" width="0.6" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="786.3" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="783.3" y="132" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="786.3" y="145"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="783.6" y="132" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="786.6" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 43 (0.9%)</title><rect x="783.9" y="164" width="12.2" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="786.9" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 30 (0.6%)</title><rect x="796.1" y="164" width="8.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="799.1" y="177"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 7 (0.1%)</title><rect x="804.6" y="164" width="1.9" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="807.6" y="177"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 6 (0.1%)</title><rect x="806.5" y="164" width="1.7" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="809.5" y="177"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="806.5" y="148" width="0.6" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="809.5" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="806.5" y="132" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="809.5" y="145"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="806.8" y="132" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="809.8" y="145"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 2 (0.0%)</title><rect x="807.1" y="148" width="0.6" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="810.1" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="807.7" y="148" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="810.7" y="161"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 1 (0.0%)</title><rect x="808" y="148" width="0.2" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="811" y="161"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="808.2" y="164" width="0.6" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="811.2" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="808.2" y="148" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="811.2" y="161"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="808.5" y="148" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="811.5" y="161"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 217 (4.5%)</title><rect x="808.8" y="180" width="61.5" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="811.8" y="193"></text></g>
+<g data-name="(self)"><title>(self) — 39 (0.8%)</title><rect x="870.3" y="180" width="11.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="873.3" y="193"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 7 (0.1%)</title><rect x="881.4" y="180" width="1.9" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="884.4" y="193"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="883.3" y="180" width="0.9" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="886.3" y="193"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 2 (0.0%)</title><rect x="883.3" y="164" width="0.6" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="886.3" y="177"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="883.9" y="164" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="886.9" y="177"></text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 1 (0.0%)</title><rect x="884.2" y="180" width="0.3" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="887.2" y="193"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="884.2" y="164" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="887.2" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 6 (0.1%)</title><rect x="884.5" y="196" width="1.7" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="887.5" y="209"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__z"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__z — 295 (6.1%)</title><rect x="886.2" y="228" width="83.6" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="889.2" y="241"></text></g>
+<g data-name="_M0MPC15array12MutArrayView8sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView8sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 295 (6.1%)</title><rect x="886.2" y="212" width="83.6" height="15" fill="rgb(217,57,13)" rx="2" ry="2"/><text x="889.2" y="225"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 287 (5.9%)</title><rect x="886.2" y="196" width="81.3" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="889.2" y="209"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 158 (3.2%)</title><rect x="886.2" y="180" width="44.7" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="889.2" y="193"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 72 (1.5%)</title><rect x="886.2" y="164" width="20.4" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="889.2" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 35 (0.7%)</title><rect x="886.2" y="148" width="9.9" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="889.2" y="161"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92 — 9 (0.2%)</title><rect x="896.1" y="148" width="2.5" height="15" fill="rgb(236,143,34)" rx="2" ry="2"/><text x="899.1" y="161"></text></g>
+<g data-name="_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB22fixed__quick__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 9 (0.2%)</title><rect x="898.6" y="148" width="2.6" height="15" fill="rgb(239,158,37)" rx="2" ry="2"/><text x="901.6" y="161"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 8 (0.2%)</title><rect x="901.2" y="148" width="2.3" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="904.2" y="161"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="901.2" y="132" width="0.8" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="904.2" y="145"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="902" y="132" width="0.6" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="905" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92 — 2 (0.0%)</title><rect x="902.6" y="132" width="0.6" height="15" fill="rgb(236,143,34)" rx="2" ry="2"/><text x="905.6" y="145"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="903.2" y="132" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="906.2" y="145"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 3 (0.1%)</title><rect x="903.5" y="148" width="0.8" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="906.5" y="161"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 2 (0.0%)</title><rect x="903.5" y="132" width="0.5" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="906.5" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="904" y="132" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="907" y="145"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="904.3" y="148" width="0.9" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="907.3" y="161"></text></g>
+<g data-name="_M0FPB28fixed__try__bubble__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB28fixed__try__bubble__sort__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 3 (0.1%)</title><rect x="905.2" y="148" width="0.8" height="15" fill="rgb(245,186,44)" rx="2" ry="2"/><text x="908.2" y="161"></text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 2 (0.0%)</title><rect x="906" y="148" width="0.6" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="909" y="161"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.0%)</title><rect x="906" y="132" width="0.6" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="909" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="906" y="116" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="909" y="129"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="906.3" y="116" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="909.3" y="129"></text></g>
+<g data-name="(self)"><title>(self) — 34 (0.7%)</title><rect x="906.6" y="164" width="9.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="909.6" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92 — 29 (0.6%)</title><rect x="916.2" y="164" width="8.2" height="15" fill="rgb(236,143,34)" rx="2" ry="2"/><text x="919.2" y="177"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 12 (0.2%)</title><rect x="924.4" y="164" width="3.4" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="927.4" y="177"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 4 (0.1%)</title><rect x="924.4" y="148" width="1.2" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="927.4" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="924.4" y="132" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="927.4" y="145"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92 — 2 (0.0%)</title><rect x="925" y="132" width="0.6" height="15" fill="rgb(236,143,34)" rx="2" ry="2"/><text x="928" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="925.6" y="148" width="0.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="928.6" y="161"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 2 (0.0%)</title><rect x="926.1" y="148" width="0.6" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="929.1" y="161"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="926.7" y="148" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="929.7" y="161"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="927" y="148" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="930" y="161"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="927.3" y="148" width="0.2" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="930.3" y="161"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="927.5" y="148" width="0.3" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="930.5" y="161"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 7 (0.1%)</title><rect x="927.8" y="164" width="2" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="930.8" y="177"></text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 2 (0.0%)</title><rect x="929.8" y="164" width="0.6" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="932.8" y="177"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.0%)</title><rect x="929.8" y="148" width="0.6" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="932.8" y="161"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 2 (0.0%)</title><rect x="930.4" y="164" width="0.5" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="933.4" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92 — 76 (1.6%)</title><rect x="930.9" y="180" width="21.6" height="15" fill="rgb(236,143,34)" rx="2" ry="2"/><text x="933.9" y="193"></text></g>
+<g data-name="(self)"><title>(self) — 30 (0.6%)</title><rect x="952.5" y="180" width="8.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="955.5" y="193"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 10 (0.2%)</title><rect x="961" y="180" width="2.8" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="964" y="193"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S413GRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 7 (0.1%)</title><rect x="961" y="164" width="2" height="15" fill="rgb(222,79,19)" rx="2" ry="2"/><text x="964" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 4 (0.1%)</title><rect x="961" y="148" width="1.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="964" y="161"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92 — 3 (0.1%)</title><rect x="962.1" y="148" width="0.9" height="15" fill="rgb(236,143,34)" rx="2" ry="2"/><text x="965.1" y="161"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="963" y="164" width="0.2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="966" y="177"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="963.2" y="164" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="966.2" y="177"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92 — 1 (0.0%)</title><rect x="963.5" y="164" width="0.3" height="15" fill="rgb(236,143,34)" rx="2" ry="2"/><text x="966.5" y="177"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 10 (0.2%)</title><rect x="963.8" y="180" width="2.8" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="966.8" y="193"></text></g>
+<g data-name="moonbit.malloc"><title>moonbit.malloc — 2 (0.0%)</title><rect x="966.6" y="180" width="0.6" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="969.6" y="193"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.0%)</title><rect x="966.6" y="164" width="0.6" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="969.6" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="966.6" y="148" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="969.6" y="161"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="966.9" y="148" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="969.9" y="161"></text></g>
+<g data-name="moonbit.incref"><title>moonbit.incref — 1 (0.0%)</title><rect x="967.2" y="180" width="0.3" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="970.2" y="193"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92 — 7 (0.1%)</title><rect x="967.5" y="196" width="2" height="15" fill="rgb(236,143,34)" rx="2" ry="2"/><text x="970.5" y="209"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="969.5" y="196" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="972.5" y="209"></text></g>
+<g data-name="(self)"><title>(self) — 319 (6.6%)</title><rect x="969.8" y="244" width="90.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="972.8" y="257">(self)</text></g>
+<g data-name="moonbit.incref"><title>moonbit.incref — 229 (4.7%)</title><rect x="1060.2" y="244" width="64.9" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="1063.2" y="257"></text></g>
+<g data-name="_M0MP59LING7167113moon__strtree3src4core8geometry5Box3D5union"><title>_M0MP59LING7167113moon__strtree3src4core8geometry5Box3D5union — 82 (1.7%)</title><rect x="1125.1" y="244" width="23.2" height="15" fill="rgb(213,40,9)" rx="2" ry="2"/><text x="1128.1" y="257"></text></g>
+<g data-name="(self)"><title>(self) — 78 (1.6%)</title><rect x="1125.1" y="228" width="22.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1128.1" y="241"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 4 (0.1%)</title><rect x="1147.2" y="228" width="1.1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1150.2" y="241"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 24 (0.5%)</title><rect x="1148.3" y="244" width="6.8" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="1151.3" y="257"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 20 (0.4%)</title><rect x="1148.3" y="228" width="5.7" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="1151.3" y="241"></text></g>
+<g data-name="(self)"><title>(self) — 19 (0.4%)</title><rect x="1148.3" y="212" width="5.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1151.3" y="225"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.0%)</title><rect x="1153.7" y="212" width="0.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1156.7" y="225"></text></g>
+<g data-name="(self)"><title>(self) — 4 (0.1%)</title><rect x="1154" y="228" width="1.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1157" y="241"></text></g>
+<g data-name="_M0MPC15array5Array4pushGiE"><title>_M0MPC15array5Array4pushGiE — 24 (0.5%)</title><rect x="1155.1" y="244" width="6.8" height="15" fill="rgb(222,81,19)" rx="2" ry="2"/><text x="1158.1" y="257"></text></g>
+<g data-name="_M0MPC15array5Array7reallocGiE"><title>_M0MPC15array5Array7reallocGiE — 17 (0.3%)</title><rect x="1155.1" y="228" width="4.8" height="15" fill="rgb(229,114,27)" rx="2" ry="2"/><text x="1158.1" y="241"></text></g>
+<g data-name="_M0MPC15array5Array14resize__bufferGiE"><title>_M0MPC15array5Array14resize__bufferGiE — 16 (0.3%)</title><rect x="1155.1" y="212" width="4.5" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="1158.1" y="225"></text></g>
+<g data-name="_M0MPB18UninitializedArray23unsafe__make__and__blitGiE"><title>_M0MPB18UninitializedArray23unsafe__make__and__blitGiE — 12 (0.2%)</title><rect x="1155.1" y="196" width="3.4" height="15" fill="rgb(248,200,47)" rx="2" ry="2"/><text x="1158.1" y="209"></text></g>
+<g data-name="moonbit.i32_array_make_raw"><title>moonbit.i32_array_make_raw — 5 (0.1%)</title><rect x="1155.1" y="180" width="1.4" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="1158.1" y="193"></text></g>
+<g data-name="moonbit.gc.malloc"><title>moonbit.gc.malloc — 2 (0.0%)</title><rect x="1155.1" y="164" width="0.6" height="15" fill="rgb(222,79,18)" rx="2" ry="2"/><text x="1158.1" y="177"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.0%)</title><rect x="1155.1" y="148" width="0.6" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="1158.1" y="161"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.0%)</title><rect x="1155.7" y="164" width="0.5" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="1158.7" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="1156.2" y="164" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1159.2" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="1156.5" y="180" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1159.5" y="193"></text></g>
+<g data-name="moonbit.unsafe_val_array_blit"><title>moonbit.unsafe_val_array_blit — 2 (0.0%)</title><rect x="1157.1" y="180" width="0.5" height="15" fill="rgb(215,50,12)" rx="2" ry="2"/><text x="1160.1" y="193"></text></g>
+<g data-name="_M0MPB18UninitializedArray12unsafe__blitGiE"><title>_M0MPB18UninitializedArray12unsafe__blitGiE — 2 (0.0%)</title><rect x="1157.6" y="180" width="0.6" height="15" fill="rgb(223,86,20)" rx="2" ry="2"/><text x="1160.6" y="193"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="1157.6" y="164" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1160.6" y="177"></text></g>
+<g data-name="moonbit.unsafe_val_array_blit"><title>moonbit.unsafe_val_array_blit — 1 (0.0%)</title><rect x="1157.9" y="164" width="0.3" height="15" fill="rgb(215,50,12)" rx="2" ry="2"/><text x="1160.9" y="177"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 1 (0.0%)</title><rect x="1158.2" y="180" width="0.3" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="1161.2" y="193"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 1 (0.0%)</title><rect x="1158.2" y="164" width="0.3" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="1161.2" y="177"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="1158.5" y="196" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1161.5" y="209"></text></g>
+<g data-name="moonbit.i32_array_make_raw"><title>moonbit.i32_array_make_raw — 2 (0.0%)</title><rect x="1159.1" y="196" width="0.5" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="1162.1" y="209"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="1159.6" y="212" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1162.6" y="225"></text></g>
+<g data-name="(self)"><title>(self) — 7 (0.1%)</title><rect x="1159.9" y="228" width="2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1162.9" y="241"></text></g>
+<g data-name="_M0MPC15array5Array4copyGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array5Array4copyGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 5 (0.1%)</title><rect x="1161.9" y="244" width="1.4" height="15" fill="rgb(224,88,21)" rx="2" ry="2"/><text x="1164.9" y="257"></text></g>
+<g data-name="_M0MPC15array5Array12unsafe__blitGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array5Array12unsafe__blitGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 4 (0.1%)</title><rect x="1161.9" y="228" width="1.1" height="15" fill="rgb(249,203,48)" rx="2" ry="2"/><text x="1164.9" y="241"></text></g>
+<g data-name="moonbit.unsafe_ref_array_blit"><title>moonbit.unsafe_ref_array_blit — 4 (0.1%)</title><rect x="1161.9" y="212" width="1.1" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="1164.9" y="225"></text></g>
+<g data-name="_M0MPC15array5Array20unsafe__make__uninitGURP59LING7167113moon__strtree3src4core8geometry5Box3DiEE"><title>_M0MPC15array5Array20unsafe__make__uninitGURP59LING7167113moon__strtree3src4core8geometry5Box3DiEE — 1 (0.0%)</title><rect x="1163" y="228" width="0.3" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="1166" y="241"></text></g>
+<g data-name="moonbit.ref_array_make"><title>moonbit.ref_array_make — 1 (0.0%)</title><rect x="1163" y="212" width="0.3" height="15" fill="rgb(249,205,49)" rx="2" ry="2"/><text x="1166" y="225"></text></g>
+<g data-name="_M0MPC15array5Array7reallocGiE"><title>_M0MPC15array5Array7reallocGiE — 2 (0.0%)</title><rect x="1163.3" y="244" width="0.6" height="15" fill="rgb(229,114,27)" rx="2" ry="2"/><text x="1166.3" y="257"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="1163.3" y="228" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1166.3" y="241"></text></g>
+<g data-name="_M0MPC15array5Array14resize__bufferGiE"><title>_M0MPC15array5Array14resize__bufferGiE — 1 (0.0%)</title><rect x="1163.6" y="228" width="0.3" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="1166.6" y="241"></text></g>
+<g data-name="_M0MPB18UninitializedArray23unsafe__make__and__blitGiE"><title>_M0MPB18UninitializedArray23unsafe__make__and__blitGiE — 1 (0.0%)</title><rect x="1163.6" y="212" width="0.3" height="15" fill="rgb(248,200,47)" rx="2" ry="2"/><text x="1166.6" y="225"></text></g>
+<g data-name="moonbit.i32_array_make_raw"><title>moonbit.i32_array_make_raw — 1 (0.0%)</title><rect x="1163.6" y="196" width="0.3" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="1166.6" y="209"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.0%)</title><rect x="1163.6" y="180" width="0.3" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="1166.6" y="193"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="1163.6" y="164" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1166.6" y="177"></text></g>
+<g data-name="_M0MPC15array5Array4pushGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array5Array4pushGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 2 (0.0%)</title><rect x="1163.9" y="244" width="0.5" height="15" fill="rgb(241,169,40)" rx="2" ry="2"/><text x="1166.9" y="257"></text></g>
+<g data-name="_M0MPC15array5Array7reallocGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array5Array7reallocGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="1164.4" y="244" width="0.3" height="15" fill="rgb(249,203,48)" rx="2" ry="2"/><text x="1167.4" y="257"></text></g>
+<g data-name="_M0MPC15array5Array14resize__bufferGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array5Array14resize__bufferGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="1164.4" y="228" width="0.3" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1167.4" y="241"></text></g>
+<g data-name="_M0MPB18UninitializedArray23make__and__blit_2einnerGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPB18UninitializedArray23make__and__blit_2einnerGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="1164.4" y="212" width="0.3" height="15" fill="rgb(214,45,10)" rx="2" ry="2"/><text x="1167.4" y="225"></text></g>
+<g data-name="moonbit.ref_array_make_with_blit"><title>moonbit.ref_array_make_with_blit — 1 (0.0%)</title><rect x="1164.4" y="196" width="0.3" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1167.4" y="209"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 329 (6.8%)</title><rect x="1164.7" y="260" width="93.3" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="1167.7" y="273"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 325 (6.7%)</title><rect x="1164.7" y="244" width="92.1" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="1167.7" y="257"></text></g>
+<g data-name="(self)"><title>(self) — 316 (6.5%)</title><rect x="1164.7" y="228" width="89.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1167.7" y="241">(self)</text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 5 (0.1%)</title><rect x="1254.3" y="228" width="1.4" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1257.3" y="241"></text></g>
+<g data-name="moonbit.free"><title>moonbit.free — 4 (0.1%)</title><rect x="1255.7" y="228" width="1.1" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="1258.7" y="241"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 4 (0.1%)</title><rect x="1255.7" y="212" width="1.1" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1258.7" y="225"></text></g>
+<g data-name="(self)"><title>(self) — 4 (0.1%)</title><rect x="1256.8" y="244" width="1.2" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1259.8" y="257"></text></g>
+<g data-name="(self)"><title>(self) — 264 (5.4%)</title><rect x="1258" y="260" width="74.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1261" y="273">(self)</text></g>
+<g data-name="_M0MPC15array5Array4makeGdE"><title>_M0MPC15array5Array4makeGdE — 5 (0.1%)</title><rect x="1332.8" y="260" width="1.4" height="15" fill="rgb(224,90,21)" rx="2" ry="2"/><text x="1335.8" y="273"></text></g>
+<g data-name="_M0MPC15array5Array4pushGiE"><title>_M0MPC15array5Array4pushGiE — 5 (0.1%)</title><rect x="1334.2" y="260" width="1.4" height="15" fill="rgb(222,81,19)" rx="2" ry="2"/><text x="1337.2" y="273"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.1%)</title><rect x="1334.2" y="244" width="0.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1337.2" y="257"></text></g>
+<g data-name="_M0MPC15array5Array7reallocGiE"><title>_M0MPC15array5Array7reallocGiE — 2 (0.0%)</title><rect x="1335" y="244" width="0.6" height="15" fill="rgb(229,114,27)" rx="2" ry="2"/><text x="1338" y="257"></text></g>
+<g data-name="_M0MPC15array5Array14resize__bufferGiE"><title>_M0MPC15array5Array14resize__bufferGiE — 2 (0.0%)</title><rect x="1335" y="228" width="0.6" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="1338" y="241"></text></g>
+<g data-name="_M0MPB18UninitializedArray23unsafe__make__and__blitGiE"><title>_M0MPB18UninitializedArray23unsafe__make__and__blitGiE — 2 (0.0%)</title><rect x="1335" y="212" width="0.6" height="15" fill="rgb(248,200,47)" rx="2" ry="2"/><text x="1338" y="225"></text></g>
+<g data-name="moonbit.unsafe_val_array_blit"><title>moonbit.unsafe_val_array_blit — 2 (0.0%)</title><rect x="1335" y="196" width="0.6" height="15" fill="rgb(215,50,12)" rx="2" ry="2"/><text x="1338" y="209"></text></g>
+<g data-name="_M0MPC15array5Array4makeGiE"><title>_M0MPC15array5Array4makeGiE — 4 (0.1%)</title><rect x="1335.6" y="260" width="1.1" height="15" fill="rgb(242,171,41)" rx="2" ry="2"/><text x="1338.6" y="273"></text></g>
+<g data-name="moonbit.incref"><title>moonbit.incref — 1 (0.0%)</title><rect x="1336.7" y="260" width="0.3" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="1339.7" y="273"></text></g>
+<g data-name="_M0MPC15array5Array14resize__bufferGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array5Array14resize__bufferGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="1337" y="260" width="0.3" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1340" y="273"></text></g>
+<g data-name="_M0MPB18UninitializedArray23make__and__blit_2einnerGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPB18UninitializedArray23make__and__blit_2einnerGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="1337" y="244" width="0.3" height="15" fill="rgb(214,45,10)" rx="2" ry="2"/><text x="1340" y="257"></text></g>
+<g data-name="moonbit.ref_array_make_with_blit"><title>moonbit.ref_array_make_with_blit — 1 (0.0%)</title><rect x="1337" y="228" width="0.3" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1340" y="241"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="1337.3" y="276" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1340.3" y="289"></text></g>
+<g data-name="moonbit.incref"><title>moonbit.incref — 2 (0.0%)</title><rect x="1337.9" y="276" width="0.5" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="1340.9" y="289"></text></g>
+<g data-name="_M0MPC15array5Array4pushGiE"><title>_M0MPC15array5Array4pushGiE — 1 (0.0%)</title><rect x="1338.4" y="276" width="0.3" height="15" fill="rgb(222,81,19)" rx="2" ry="2"/><text x="1341.4" y="289"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 48 (1.0%)</title><rect x="1338.7" y="292" width="13.6" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="1341.7" y="305"></text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 44 (0.9%)</title><rect x="1338.7" y="276" width="12.5" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="1341.7" y="289"></text></g>
+<g data-name="(self)"><title>(self) — 30 (0.6%)</title><rect x="1338.7" y="260" width="8.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1341.7" y="273"></text></g>
+<g data-name="moonbit.free"><title>moonbit.free — 7 (0.1%)</title><rect x="1347.2" y="260" width="2" height="15" fill="rgb(206,7,1)" rx="2" ry="2"/><text x="1350.2" y="273"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 5 (0.1%)</title><rect x="1347.2" y="244" width="1.4" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1350.2" y="257"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="1348.6" y="244" width="0.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1351.6" y="257"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 7 (0.1%)</title><rect x="1349.2" y="260" width="2" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1352.2" y="273"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.0%)</title><rect x="1351.2" y="276" width="0.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1354.2" y="289"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 2 (0.0%)</title><rect x="1351.7" y="276" width="0.6" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1354.7" y="289"></text></g>
+<g data-name="(self)"><title>(self) — 47 (1.0%)</title><rect x="1352.3" y="292" width="13.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1355.3" y="305"></text></g>
+<g data-name="_M0MP59LING7167113moon__strtree3src4core8geometry5Box3D3new"><title>_M0MP59LING7167113moon__strtree3src4core8geometry5Box3D3new — 41 (0.8%)</title><rect x="1365.6" y="292" width="11.6" height="15" fill="rgb(217,56,13)" rx="2" ry="2"/><text x="1368.6" y="305"></text></g>
+<g data-name="(self)"><title>(self) — 19 (0.4%)</title><rect x="1365.6" y="276" width="5.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1368.6" y="289"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 14 (0.3%)</title><rect x="1371" y="276" width="4" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1374" y="289"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 8 (0.2%)</title><rect x="1375" y="276" width="2.2" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1378" y="289"></text></g>
+<g data-name="_M0FP26orisgo19strtree_2dbenchmark10input__f64"><title>_M0FP26orisgo19strtree_2dbenchmark10input__f64 — 8 (0.2%)</title><rect x="1377.2" y="292" width="2.3" height="15" fill="rgb(226,99,23)" rx="2" ry="2"/><text x="1380.2" y="305"></text></g>
+<g data-name="wasm-to-js"><title>wasm-to-js — 8 (0.2%)</title><rect x="1377.2" y="276" width="2.3" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1380.2" y="289"></text></g>
+<g data-name="input_f64 [client.mjs:70]"><title>input_f64 [client.mjs:70] — 8 (0.2%)</title><rect x="1377.2" y="260" width="2.3" height="15" fill="rgb(246,190,45)" rx="2" ry="2"/><text x="1380.2" y="273"></text></g>
+<g data-name="receive [client.mjs:63]"><title>receive [client.mjs:63] — 8 (0.2%)</title><rect x="1377.2" y="244" width="2.3" height="15" fill="rgb(234,136,32)" rx="2" ry="2"/><text x="1380.2" y="257"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 7 (0.1%)</title><rect x="1379.5" y="292" width="2" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1382.5" y="305"></text></g>
+<g data-name="moonbit.float_array_make"><title>moonbit.float_array_make — 4 (0.1%)</title><rect x="1381.5" y="292" width="1.1" height="15" fill="rgb(247,196,47)" rx="2" ry="2"/><text x="1384.5" y="305"></text></g>
+<g data-name="_M0FP26orisgo19strtree_2dbenchmark10input__u32"><title>_M0FP26orisgo19strtree_2dbenchmark10input__u32 — 2 (0.0%)</title><rect x="1382.6" y="292" width="0.6" height="15" fill="rgb(212,32,7)" rx="2" ry="2"/><text x="1385.6" y="305"></text></g>
+<g data-name="wasm-to-js"><title>wasm-to-js — 2 (0.0%)</title><rect x="1382.6" y="276" width="0.6" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1385.6" y="289"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="1382.6" y="260" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1385.6" y="273"></text></g>
+<g data-name="input_u32 [client.mjs:71]"><title>input_u32 [client.mjs:71] — 1 (0.0%)</title><rect x="1382.9" y="260" width="0.3" height="15" fill="rgb(225,94,22)" rx="2" ry="2"/><text x="1385.9" y="273"></text></g>
+<g data-name="receive [client.mjs:63]"><title>receive [client.mjs:63] — 1 (0.0%)</title><rect x="1382.9" y="244" width="0.3" height="15" fill="rgb(234,136,32)" rx="2" ry="2"/><text x="1385.9" y="257"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="1383.2" y="372" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1386.2" y="385"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.0%)</title><rect x="1383.5" y="388" width="0.3" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1386.5" y="401"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 3 (0.1%)</title><rect x="1383.8" y="420" width="0.8" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1386.8" y="433"></text></g>
+<g data-name="moonbit.check_range"><title>moonbit.check_range — 3 (0.1%)</title><rect x="1384.6" y="420" width="0.9" height="15" fill="rgb(207,10,2)" rx="2" ry="2"/><text x="1387.6" y="433"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117"><title>_M0FP59LING7167113moon__strtree3src4core7packing27sort__sub__items__by__y__3dC1848l117 — 3 (0.1%)</title><rect x="1385.5" y="420" width="0.8" height="15" fill="rgb(247,194,46)" rx="2" ry="2"/><text x="1388.5" y="433"></text></g>
+<g data-name="(idle)"><title>(idle) — 2 (0.0%)</title><rect x="1386.3" y="420" width="0.6" height="15" fill="rgb(215,50,11)" rx="2" ry="2"/><text x="1389.3" y="433"></text></g>
+<g data-name="(program)"><title>(program) — 2 (0.0%)</title><rect x="1386.9" y="420" width="0.5" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="1389.9" y="433"></text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 2 (0.0%)</title><rect x="1387.4" y="420" width="0.6" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="1390.4" y="433"></text></g>
+<g data-name="_M0MPC15array5Array4pushGiE"><title>_M0MPC15array5Array4pushGiE — 2 (0.0%)</title><rect x="1388" y="420" width="0.6" height="15" fill="rgb(222,81,19)" rx="2" ry="2"/><text x="1391" y="433"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.0%)</title><rect x="1388.6" y="420" width="0.3" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1391.6" y="433"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.0%)</title><rect x="1388.9" y="420" width="0.2" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="1391.9" y="433"></text></g>
+<g data-name="_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE"><title>_M0FPB24fixed__choose__pivot__byN7sort__2S433GiE — 1 (0.0%)</title><rect x="1389.1" y="420" width="0.3" height="15" fill="rgb(240,162,38)" rx="2" ry="2"/><text x="1392.1" y="433"></text></g>
+<g data-name="_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92"><title>_M0FP59LING7167113moon__strtree3src4core7packing23sort__sub__items__by__zC1836l92 — 1 (0.0%)</title><rect x="1389.4" y="420" width="0.3" height="15" fill="rgb(236,143,34)" rx="2" ry="2"/><text x="1392.4" y="433"></text></g>
+<g data-name="_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE"><title>_M0MPC15array12MutArrayView4swapGRP59LING7167113moon__strtree3src4core7packing9STRItem3DE — 1 (0.0%)</title><rect x="1389.7" y="420" width="0.3" height="15" fill="rgb(219,66,15)" rx="2" ry="2"/><text x="1392.7" y="433"></text></g>
+</g>
+</svg>

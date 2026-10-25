@@ -1,0 +1,12 @@
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query 241
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__i32;wasm-to-js;output_i32 [client.mjs:77] 7
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__u32;wasm-to-js 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__u32;wasm-to-js;output_u32 [client.mjs:73] 169
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query 1982
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query;_M0MPB18UninitializedArray23make__and__blit_2einnerGiE 23
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query;_M0MPB18UninitializedArray23make__and__blit_2einnerGiE;tlsf/removeBlock 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query;moonbit.decref;moonbit.gc.free 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;wasm-to-js;input_f64 [client.mjs:70];receive [client.mjs:63];view [client.mjs:59] 1
+(root);(garbage collector) 2
+(root);(idle) 1
+(root);(program) 2

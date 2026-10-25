@@ -1,0 +1,8 @@
+(root);(anonymous);work [diagnostic-profile.mjs:24] 2
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D12query__count 411
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D12query__count;moonbit.gc.free 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;wasm-to-js 2
+(root);(idle) 1
+(root);(program) 1

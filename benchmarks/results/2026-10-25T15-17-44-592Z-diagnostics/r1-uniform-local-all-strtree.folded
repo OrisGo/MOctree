@@ -1,0 +1,14 @@
+(root);(anonymous);work [diagnostic-profile.mjs:24] 2
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__i32;wasm-to-js;output_i32 [client.mjs:77] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__u32;wasm-to-js;output_u32 [client.mjs:73] 486
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__u32;wasm-to-js;output_u32 [client.mjs:73];view [client.mjs:59] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0FP26orisgo19strtree_2dbenchmark11output__u32;wasm-to-js;output_u32 [client.mjs:73];view [client.mjs:59];integer [client.mjs:20] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP49LING7167113moon__strtree3src3api9StrTree3D5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query 10
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query 9
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;_M0MP59LING7167113moon__strtree3src4core5index9StrTree3D5query;_M0MPC15array5Array7reallocGiE;_M0MPC15array5Array14resize__bufferGiE 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;moonbit.i32_array_make 25
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;moonbit.i32_array_make;moonbit.i32_array_make_raw;moonbit.store_array_header 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];js-to-wasm:iii:i;_M0FP26orisgo19strtree_2dbenchmark5query;wasm-to-js;output_u32 [client.mjs:73] 218
+(root);(garbage collector) 6
+(root);(idle) 2
+(root);(program) 1

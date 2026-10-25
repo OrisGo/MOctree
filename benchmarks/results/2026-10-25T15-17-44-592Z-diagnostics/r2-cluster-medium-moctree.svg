@@ -1,0 +1,175 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="1400" height="278" viewBox="0 0 1400 278" onload="init()">
+<defs>
+<linearGradient id="background" y1="0" y2="1" x1="0" x2="0">
+<stop stop-color="#eeeeee" offset="5%"/>
+<stop stop-color="#eeeeb0" offset="95%"/>
+</linearGradient>
+</defs>
+<style type="text/css">
+text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+#search, #ignorecase { opacity:0.1; cursor:pointer; }
+#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+#title { text-anchor:middle; font-size:17px }
+#unzoom { cursor:pointer; }
+#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+.hide { display:none; }
+.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript"><![CDATA[
+var XPAD = 10; var FONTSIZE = 12; var FONTWIDTH = 0.6; var INVERTED = false; var SEARCHCOLOR = "rgb(230,0,230)";
+"use strict";
+var SVG, FRAMES, DETAILS, SEARCHBTN, UNZBTN, MATCHED, ICBTN;
+var orig = [], searching = false, term = null, ignorecase = false;
+var canvasW = 0;
+function init() {
+  SVG = document.getElementsByTagName("svg")[0];
+  FRAMES = document.getElementById("frames").children;
+  DETAILS = document.getElementById("details").firstChild;
+  SEARCHBTN = document.getElementById("search");
+  UNZBTN = document.getElementById("unzoom");
+  MATCHED = document.getElementById("matched");
+  ICBTN = document.getElementById("ignorecase");
+  canvasW = SVG.width.baseVal.value;
+  for (var i = 0; i < FRAMES.length; i++) {
+    var r = rectOf(FRAMES[i]);
+    orig.push({x:num(r,"x"), y:num(r,"y"), w:num(r,"width"), fill:r.getAttribute("fill")});
+  }
+  wire();
+}
+function num(el, a) { return parseFloat(el.getAttribute(a)); }
+function rectOf(g) { return g.querySelector("rect"); }
+function textOf(g) { return g.querySelector("text"); }
+function nameOf(g) { return g.getAttribute("data-name") || ""; }
+function indexOf(g) { return Array.prototype.indexOf.call(FRAMES,g); }
+function groupOf(n) {
+  while(n && n.parentNode && n.parentNode.id !== "frames") n=n.parentNode;
+  return n && n.parentNode && n.parentNode.id === "frames" ? n : null;
+}
+function fitText(g,x,w) {
+  var t=textOf(g); if(!t) return;
+  var full=nameOf(g), room=w-6, chars=Math.floor(room/(FONTSIZE*FONTWIDTH));
+  var points=Array.from(full);
+  t.textContent=chars<2 ? "" : chars>=points.length ? full : points.slice(0,chars-2).join("")+"..";
+}
+function setGeom(g,x,w) {
+  var r=rectOf(g),t=textOf(g); r.setAttribute("x",x); r.setAttribute("width",w);
+  if(t) t.setAttribute("x",x+3); fitText(g,x,w);
+}
+function applyZoom(i) {
+  if(i<0 || orig[i].w<=0) return;
+  var base=orig[i], xmin=base.x, xmax=base.x+base.w;
+  var ratio=(canvasW-2*XPAD)/base.w, fudge=0.0001;
+  UNZBTN.classList.remove("hide");
+  for(var k=0;k<FRAMES.length;k++) {
+    var g=FRAMES[k],o=orig[k];
+    g.classList.remove("hide"); g.classList.remove("parent");
+    var ancestor=INVERTED ? o.y<base.y : o.y>base.y;
+    if(ancestor) {
+      if(o.x<=xmin+fudge && o.x+o.w+fudge>=xmax) {
+        g.classList.add("parent"); setGeom(g,XPAD,canvasW-2*XPAD);
+      } else g.classList.add("hide");
+    } else if(o.x<xmin-fudge || o.x+o.w>xmax+fudge) g.classList.add("hide");
+    else setGeom(g,(o.x-xmin)*ratio+XPAD,o.w*ratio);
+  }
+  if(term!==null) doSearch();
+}
+function resetZoom() {
+  UNZBTN.classList.add("hide");
+  for(var k=0;k<FRAMES.length;k++) {
+    FRAMES[k].classList.remove("hide"); FRAMES[k].classList.remove("parent");
+    setGeom(FRAMES[k],orig[k].x,orig[k].w);
+  }
+  if(term!==null) doSearch();
+}
+function clearHighlight() {
+  for(var k=0;k<FRAMES.length;k++) rectOf(FRAMES[k]).setAttribute("fill",orig[k].fill);
+}
+function doSearch() {
+  if(term===null) return;
+  clearHighlight();
+  searching=true; SEARCHBTN.classList.add("show"); SEARCHBTN.firstChild.nodeValue="Reset Search";
+  MATCHED.classList.remove("hide");
+  var re;
+  try { re=new RegExp(term,ignorecase?"i":""); }
+  catch(e) { MATCHED.firstChild.nodeValue="Invalid regular expression"; return; }
+  var spans=[];
+  for(var k=0;k<FRAMES.length;k++) {
+    var g=FRAMES[k];
+    if(g.classList.contains("hide") || g.classList.contains("parent")) continue;
+    if(re.test(nameOf(g))) {
+      var r=rectOf(g), x=num(r,"x"), right=x+num(r,"width");
+      rectOf(g).setAttribute("fill",SEARCHCOLOR);
+      spans.push({x:Math.max(XPAD,x),right:Math.min(canvasW-XPAD,right)});
+    }
+  }
+  spans.sort(function(a,b){return a.x-b.x || b.right-a.right;});
+  var count=0,end=XPAD;
+  for(var j=0;j<spans.length;j++) {
+    var s=spans[j];
+    if(s.right>end) { count+=s.right-Math.max(end,s.x); end=s.right; }
+  }
+  var pct=Math.max(0,Math.min(100,100*count/(canvasW-2*XPAD)));
+  MATCHED.firstChild.nodeValue="Matched: "+(pct===100?100:pct.toFixed(1))+"%";
+}
+function resetSearch() {
+  searching=false; term=null; clearHighlight(); SEARCHBTN.classList.remove("show");
+  SEARCHBTN.firstChild.nodeValue="Search"; MATCHED.classList.add("hide"); MATCHED.firstChild.nodeValue=" ";
+}
+function searchPrompt() {
+  if(searching) {resetSearch();return;}
+  var t=prompt("Enter a regular expression; Ctrl-I toggles case sensitivity","");
+  if(t===null) return; term=t;doSearch();
+}
+function toggleIgnoreCase() {
+  ignorecase=!ignorecase; ICBTN.classList.toggle("show",ignorecase);
+  if(term!==null) doSearch();
+}
+function wire() {
+  window.addEventListener("click",function(e){
+    if(e.target.id==="unzoom") {resetZoom();return;}
+    if(e.target.id==="search") {searchPrompt();return;}
+    if(e.target.id==="ignorecase") {toggleIgnoreCase();return;}
+    var g=groupOf(e.target);if(g) applyZoom(indexOf(g));
+  });
+  window.addEventListener("mouseover",function(e){var g=groupOf(e.target);if(g) DETAILS.nodeValue="Function: "+g.querySelector("title").textContent;});
+  window.addEventListener("mouseout",function(e){if(groupOf(e.target)) DETAILS.nodeValue=" ";});
+  window.addEventListener("keydown",function(e){
+    if(e.keyCode===114 || (e.ctrlKey && e.keyCode===70)){e.preventDefault();searchPrompt();}
+    else if(e.ctrlKey && e.keyCode===73){e.preventDefault();toggleIgnoreCase();}
+  });
+}
+]]></script>
+<rect x="0" y="0" width="1400" height="278" fill="url(#background)"/>
+<text id="title" x="700" y="24">Flame Graph</text>
+<text id="unzoom" x="10" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1290" y="24">Search</text>
+<text id="ignorecase" x="1374" y="24">ic</text>
+<text id="details" x="10" y="261"> </text>
+<text id="matched" x="1290" y="261"> </text>
+<g id="frames">
+<g data-name="(root)"><title>(root) — 1,672 (100.0%)</title><rect x="10" y="228" width="1380" height="15" fill="rgb(220,70,16)" rx="2" ry="2"/><text x="13" y="241">(root)</text></g>
+<g data-name="(anonymous)"><title>(anonymous) — 1,670 (99.9%)</title><rect x="10" y="212" width="1378.3" height="15" fill="rgb(223,87,20)" rx="2" ry="2"/><text x="13" y="225">(anonymous)</text></g>
+<g data-name="work [diagnostic-profile.mjs:24]"><title>work [diagnostic-profile.mjs:24] — 1,670 (99.9%)</title><rect x="10" y="196" width="1378.3" height="15" fill="rgb(233,130,31)" rx="2" ry="2"/><text x="13" y="209">work [diagnostic-profile.mjs:24]</text></g>
+<g data-name="query [client.mjs:142]"><title>query [client.mjs:142] — 1,669 (99.8%)</title><rect x="10" y="180" width="1377.5" height="15" fill="rgb(205,0,0)" rx="2" ry="2"/><text x="13" y="193">query [client.mjs:142]</text></g>
+<g data-name="run [client.mjs:107]"><title>run [client.mjs:107] — 1,669 (99.8%)</title><rect x="10" y="164" width="1377.5" height="15" fill="rgb(252,216,51)" rx="2" ry="2"/><text x="13" y="177">run [client.mjs:107]</text></g>
+<g data-name="(anonymous) [client.mjs:143]"><title>(anonymous) [client.mjs:143] — 1,669 (99.8%)</title><rect x="10" y="148" width="1377.5" height="15" fill="rgb(215,47,11)" rx="2" ry="2"/><text x="13" y="161">(anonymous) [client.mjs:143]</text></g>
+<g data-name="execute [client.mjs:115]"><title>execute [client.mjs:115] — 1,666 (99.6%)</title><rect x="10" y="132" width="1375" height="15" fill="rgb(234,133,32)" rx="2" ry="2"/><text x="13" y="145">execute [client.mjs:115]</text></g>
+<g data-name="js-to-wasm:iii:i"><title>js-to-wasm:iii:i — 1,666 (99.6%)</title><rect x="10" y="116" width="1375" height="15" fill="rgb(233,130,31)" rx="2" ry="2"/><text x="13" y="129">js-to-wasm:iii:i</text></g>
+<g data-name="_M0FP46orisgo6octree8adapters6linear5query"><title>_M0FP46orisgo6octree8adapters6linear5query — 1,666 (99.6%)</title><rect x="10" y="100" width="1375" height="15" fill="rgb(220,70,16)" rx="2" ry="2"/><text x="13" y="113">_M0FP46orisgo6octree8adapters6linear5query</text></g>
+<g data-name="_M0MP36orisgo6octree7objects17StaticObjectIndex24query__aabb__batch__into"><title>_M0MP36orisgo6octree7objects17StaticObjectIndex24query__aabb__batch__into — 1,657 (99.1%)</title><rect x="10" y="84" width="1367.6" height="15" fill="rgb(253,223,53)" rx="2" ry="2"/><text x="13" y="97">_M0MP36orisgo6octree7objects17StaticObjectIndex24query__aabb__batch__into</text></g>
+<g data-name="_M0MP36orisgo6octree7objects17StaticObjectIndex10run__batchGRP36orisgo6octree4geom4AabbE"><title>_M0MP36orisgo6octree7objects17StaticObjectIndex10run__batchGRP36orisgo6octree4geom4AabbE — 1,657 (99.1%)</title><rect x="10" y="68" width="1367.6" height="15" fill="rgb(213,36,8)" rx="2" ry="2"/><text x="13" y="81">_M0MP36orisgo6octree7objects17StaticObjectIndex10run__batchGRP36orisgo6octree4geom4AabbE</text></g>
+<g data-name="_M0MP36orisgo6octree7objects17StaticObjectIndex10run__query"><title>_M0MP36orisgo6octree7objects17StaticObjectIndex10run__query — 1,657 (99.1%)</title><rect x="10" y="52" width="1367.6" height="15" fill="rgb(232,128,30)" rx="2" ry="2"/><text x="13" y="65">_M0MP36orisgo6octree7objects17StaticObjectIndex10run__query</text></g>
+<g data-name="(self)"><title>(self) — 1,656 (99.0%)</title><rect x="10" y="36" width="1366.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="13" y="49">(self)</text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 1 (0.1%)</title><rect x="1376.8" y="36" width="0.8" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="1379.8" y="49"></text></g>
+<g data-name="wasm-to-js"><title>wasm-to-js — 6 (0.4%)</title><rect x="1377.6" y="84" width="5" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1380.6" y="97"></text></g>
+<g data-name="output_i32 [client.mjs:77]"><title>output_i32 [client.mjs:77] — 6 (0.4%)</title><rect x="1377.6" y="68" width="5" height="15" fill="rgb(230,119,28)" rx="2" ry="2"/><text x="1380.6" y="81"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.2%)</title><rect x="1377.6" y="52" width="2.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1380.6" y="65"></text></g>
+<g data-name="view [client.mjs:59]"><title>view [client.mjs:59] — 3 (0.2%)</title><rect x="1380.1" y="52" width="2.5" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1383.1" y="65"></text></g>
+<g data-name="(self)"><title>(self) — 2 (0.1%)</title><rect x="1382.6" y="84" width="1.6" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1385.6" y="97"></text></g>
+<g data-name="moonbit.gc.malloc"><title>moonbit.gc.malloc — 1 (0.1%)</title><rect x="1384.2" y="84" width="0.8" height="15" fill="rgb(222,79,18)" rx="2" ry="2"/><text x="1387.2" y="97"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 1 (0.1%)</title><rect x="1384.2" y="68" width="0.8" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="1387.2" y="81"></text></g>
+<g data-name="(self)"><title>(self) — 3 (0.2%)</title><rect x="1385" y="132" width="2.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1388" y="145"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.1%)</title><rect x="1387.5" y="180" width="0.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1390.5" y="193"></text></g>
+<g data-name="(program)"><title>(program) — 2 (0.1%)</title><rect x="1388.3" y="212" width="1.7" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="1391.3" y="225"></text></g>
+</g>
+</svg>

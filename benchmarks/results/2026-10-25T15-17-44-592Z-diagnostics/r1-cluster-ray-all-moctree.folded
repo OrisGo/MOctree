@@ -1,0 +1,12 @@
+(root);(anonymous) 1
+(root);(anonymous);work [diagnostic-profile.mjs:24] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0FP46orisgo6octree8adapters6linear11output__i32;wasm-to-js;output_i32 [client.mjs:77] 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0FP46orisgo6octree8adapters6linear11output__u32;wasm-to-js;output_u32 [client.mjs:73] 348
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0FP46orisgo6octree8adapters6linear3vec;tlsf/searchBlock 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0MP36orisgo6octree4geom3Ray3new 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;_M0MP36orisgo6octree7objects17StaticObjectIndex35query__ray__candidates__batch__into;_M0MP36orisgo6octree7objects17StaticObjectIndex10run__batchGRP36orisgo6octree4geom4AabbE;_M0MP36orisgo6octree7objects17StaticObjectIndex10run__query 176
+(root);(anonymous);work [diagnostic-profile.mjs:24];query [client.mjs:142];run [client.mjs:107];(anonymous) [client.mjs:143];execute [client.mjs:115];js-to-wasm:iii:i;_M0FP46orisgo6octree8adapters6linear5query;moonbit.i32_array_make 9
+(root);(garbage collector) 5
+(root);(idle) 2
+(root);(program) 2

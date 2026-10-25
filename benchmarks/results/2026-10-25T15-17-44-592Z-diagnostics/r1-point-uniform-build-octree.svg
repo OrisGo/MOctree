@@ -1,0 +1,186 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="1400" height="214" viewBox="0 0 1400 214" onload="init()">
+<defs>
+<linearGradient id="background" y1="0" y2="1" x1="0" x2="0">
+<stop stop-color="#eeeeee" offset="5%"/>
+<stop stop-color="#eeeeb0" offset="95%"/>
+</linearGradient>
+</defs>
+<style type="text/css">
+text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+#search, #ignorecase { opacity:0.1; cursor:pointer; }
+#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+#title { text-anchor:middle; font-size:17px }
+#unzoom { cursor:pointer; }
+#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+.hide { display:none; }
+.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript"><![CDATA[
+var XPAD = 10; var FONTSIZE = 12; var FONTWIDTH = 0.6; var INVERTED = false; var SEARCHCOLOR = "rgb(230,0,230)";
+"use strict";
+var SVG, FRAMES, DETAILS, SEARCHBTN, UNZBTN, MATCHED, ICBTN;
+var orig = [], searching = false, term = null, ignorecase = false;
+var canvasW = 0;
+function init() {
+  SVG = document.getElementsByTagName("svg")[0];
+  FRAMES = document.getElementById("frames").children;
+  DETAILS = document.getElementById("details").firstChild;
+  SEARCHBTN = document.getElementById("search");
+  UNZBTN = document.getElementById("unzoom");
+  MATCHED = document.getElementById("matched");
+  ICBTN = document.getElementById("ignorecase");
+  canvasW = SVG.width.baseVal.value;
+  for (var i = 0; i < FRAMES.length; i++) {
+    var r = rectOf(FRAMES[i]);
+    orig.push({x:num(r,"x"), y:num(r,"y"), w:num(r,"width"), fill:r.getAttribute("fill")});
+  }
+  wire();
+}
+function num(el, a) { return parseFloat(el.getAttribute(a)); }
+function rectOf(g) { return g.querySelector("rect"); }
+function textOf(g) { return g.querySelector("text"); }
+function nameOf(g) { return g.getAttribute("data-name") || ""; }
+function indexOf(g) { return Array.prototype.indexOf.call(FRAMES,g); }
+function groupOf(n) {
+  while(n && n.parentNode && n.parentNode.id !== "frames") n=n.parentNode;
+  return n && n.parentNode && n.parentNode.id === "frames" ? n : null;
+}
+function fitText(g,x,w) {
+  var t=textOf(g); if(!t) return;
+  var full=nameOf(g), room=w-6, chars=Math.floor(room/(FONTSIZE*FONTWIDTH));
+  var points=Array.from(full);
+  t.textContent=chars<2 ? "" : chars>=points.length ? full : points.slice(0,chars-2).join("")+"..";
+}
+function setGeom(g,x,w) {
+  var r=rectOf(g),t=textOf(g); r.setAttribute("x",x); r.setAttribute("width",w);
+  if(t) t.setAttribute("x",x+3); fitText(g,x,w);
+}
+function applyZoom(i) {
+  if(i<0 || orig[i].w<=0) return;
+  var base=orig[i], xmin=base.x, xmax=base.x+base.w;
+  var ratio=(canvasW-2*XPAD)/base.w, fudge=0.0001;
+  UNZBTN.classList.remove("hide");
+  for(var k=0;k<FRAMES.length;k++) {
+    var g=FRAMES[k],o=orig[k];
+    g.classList.remove("hide"); g.classList.remove("parent");
+    var ancestor=INVERTED ? o.y<base.y : o.y>base.y;
+    if(ancestor) {
+      if(o.x<=xmin+fudge && o.x+o.w+fudge>=xmax) {
+        g.classList.add("parent"); setGeom(g,XPAD,canvasW-2*XPAD);
+      } else g.classList.add("hide");
+    } else if(o.x<xmin-fudge || o.x+o.w>xmax+fudge) g.classList.add("hide");
+    else setGeom(g,(o.x-xmin)*ratio+XPAD,o.w*ratio);
+  }
+  if(term!==null) doSearch();
+}
+function resetZoom() {
+  UNZBTN.classList.add("hide");
+  for(var k=0;k<FRAMES.length;k++) {
+    FRAMES[k].classList.remove("hide"); FRAMES[k].classList.remove("parent");
+    setGeom(FRAMES[k],orig[k].x,orig[k].w);
+  }
+  if(term!==null) doSearch();
+}
+function clearHighlight() {
+  for(var k=0;k<FRAMES.length;k++) rectOf(FRAMES[k]).setAttribute("fill",orig[k].fill);
+}
+function doSearch() {
+  if(term===null) return;
+  clearHighlight();
+  searching=true; SEARCHBTN.classList.add("show"); SEARCHBTN.firstChild.nodeValue="Reset Search";
+  MATCHED.classList.remove("hide");
+  var re;
+  try { re=new RegExp(term,ignorecase?"i":""); }
+  catch(e) { MATCHED.firstChild.nodeValue="Invalid regular expression"; return; }
+  var spans=[];
+  for(var k=0;k<FRAMES.length;k++) {
+    var g=FRAMES[k];
+    if(g.classList.contains("hide") || g.classList.contains("parent")) continue;
+    if(re.test(nameOf(g))) {
+      var r=rectOf(g), x=num(r,"x"), right=x+num(r,"width");
+      rectOf(g).setAttribute("fill",SEARCHCOLOR);
+      spans.push({x:Math.max(XPAD,x),right:Math.min(canvasW-XPAD,right)});
+    }
+  }
+  spans.sort(function(a,b){return a.x-b.x || b.right-a.right;});
+  var count=0,end=XPAD;
+  for(var j=0;j<spans.length;j++) {
+    var s=spans[j];
+    if(s.right>end) { count+=s.right-Math.max(end,s.x); end=s.right; }
+  }
+  var pct=Math.max(0,Math.min(100,100*count/(canvasW-2*XPAD)));
+  MATCHED.firstChild.nodeValue="Matched: "+(pct===100?100:pct.toFixed(1))+"%";
+}
+function resetSearch() {
+  searching=false; term=null; clearHighlight(); SEARCHBTN.classList.remove("show");
+  SEARCHBTN.firstChild.nodeValue="Search"; MATCHED.classList.add("hide"); MATCHED.firstChild.nodeValue=" ";
+}
+function searchPrompt() {
+  if(searching) {resetSearch();return;}
+  var t=prompt("Enter a regular expression; Ctrl-I toggles case sensitivity","");
+  if(t===null) return; term=t;doSearch();
+}
+function toggleIgnoreCase() {
+  ignorecase=!ignorecase; ICBTN.classList.toggle("show",ignorecase);
+  if(term!==null) doSearch();
+}
+function wire() {
+  window.addEventListener("click",function(e){
+    if(e.target.id==="unzoom") {resetZoom();return;}
+    if(e.target.id==="search") {searchPrompt();return;}
+    if(e.target.id==="ignorecase") {toggleIgnoreCase();return;}
+    var g=groupOf(e.target);if(g) applyZoom(indexOf(g));
+  });
+  window.addEventListener("mouseover",function(e){var g=groupOf(e.target);if(g) DETAILS.nodeValue="Function: "+g.querySelector("title").textContent;});
+  window.addEventListener("mouseout",function(e){if(groupOf(e.target)) DETAILS.nodeValue=" ";});
+  window.addEventListener("keydown",function(e){
+    if(e.keyCode===114 || (e.ctrlKey && e.keyCode===70)){e.preventDefault();searchPrompt();}
+    else if(e.ctrlKey && e.keyCode===73){e.preventDefault();toggleIgnoreCase();}
+  });
+}
+]]></script>
+<rect x="0" y="0" width="1400" height="214" fill="url(#background)"/>
+<text id="title" x="700" y="24">Flame Graph</text>
+<text id="unzoom" x="10" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1290" y="24">Search</text>
+<text id="ignorecase" x="1374" y="24">ic</text>
+<text id="details" x="10" y="197"> </text>
+<text id="matched" x="1290" y="197"> </text>
+<g id="frames">
+<g data-name="(root)"><title>(root) — 503 (100.0%)</title><rect x="10" y="164" width="1380" height="15" fill="rgb(220,70,16)" rx="2" ry="2"/><text x="13" y="177">(root)</text></g>
+<g data-name="(anonymous)"><title>(anonymous) — 500 (99.4%)</title><rect x="10" y="148" width="1371.8" height="15" fill="rgb(223,87,20)" rx="2" ry="2"/><text x="13" y="161">(anonymous)</text></g>
+<g data-name="work [diagnostic-profile.mjs:24]"><title>work [diagnostic-profile.mjs:24] — 500 (99.4%)</title><rect x="10" y="132" width="1371.8" height="15" fill="rgb(233,130,31)" rx="2" ry="2"/><text x="13" y="145">work [diagnostic-profile.mjs:24]</text></g>
+<g data-name="build [points-client.mjs:11]"><title>build [points-client.mjs:11] — 500 (99.4%)</title><rect x="10" y="116" width="1371.8" height="15" fill="rgb(230,117,28)" rx="2" ry="2"/><text x="13" y="129">build [points-client.mjs:11]</text></g>
+<g data-name="js-to-wasm:ii:i"><title>js-to-wasm:ii:i — 500 (99.4%)</title><rect x="10" y="100" width="1371.8" height="15" fill="rgb(211,30,7)" rx="2" ry="2"/><text x="13" y="113">js-to-wasm:ii:i</text></g>
+<g data-name="_M0FP26orisgo19walkzzz_2dbenchmark5build"><title>_M0FP26orisgo19walkzzz_2dbenchmark5build — 496 (98.6%)</title><rect x="10" y="84" width="1360.8" height="15" fill="rgb(209,20,4)" rx="2" ry="2"/><text x="13" y="97">_M0FP26orisgo19walkzzz_2dbenchmark5build</text></g>
+<g data-name="moonbit.decref"><title>moonbit.decref — 162 (32.2%)</title><rect x="10" y="68" width="444.5" height="15" fill="rgb(221,74,17)" rx="2" ry="2"/><text x="13" y="81">moonbit.decref</text></g>
+<g data-name="moonbit.gc.free"><title>moonbit.gc.free — 162 (32.2%)</title><rect x="10" y="52" width="444.5" height="15" fill="rgb(254,228,54)" rx="2" ry="2"/><text x="13" y="65">moonbit.gc.free</text></g>
+<g data-name="(self)"><title>(self) — 136 (27.0%)</title><rect x="10" y="36" width="373.1" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="13" y="49">(self)</text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 26 (5.2%)</title><rect x="383.1" y="36" width="71.4" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="386.1" y="49"></text></g>
+<g data-name="(self)"><title>(self) — 131 (26.0%)</title><rect x="454.5" y="68" width="359.4" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="457.5" y="81">(self)</text></g>
+<g data-name="_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide"><title>_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide — 81 (16.1%)</title><rect x="813.9" y="68" width="222.2" height="15" fill="rgb(246,191,45)" rx="2" ry="2"/><text x="816.9" y="81"></text></g>
+<g data-name="(self)"><title>(self) — 63 (12.5%)</title><rect x="813.9" y="52" width="172.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="816.9" y="65">(self)</text></g>
+<g data-name="_M0MPB18UninitializedArray23make__and__blit_2einnerGRP47walkzzz15moon_2dgeometry4base4core7Point3DE"><title>_M0MPB18UninitializedArray23make__and__blit_2einnerGRP47walkzzz15moon_2dgeometry4base4core7Point3DE — 10 (2.0%)</title><rect x="986.7" y="52" width="27.4" height="15" fill="rgb(220,69,16)" rx="2" ry="2"/><text x="989.7" y="65"></text></g>
+<g data-name="(self)"><title>(self) — 6 (1.2%)</title><rect x="986.7" y="36" width="16.5" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="989.7" y="49"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 2 (0.4%)</title><rect x="1003.2" y="36" width="5.4" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1006.2" y="49"></text></g>
+<g data-name="tlsf/removeBlock"><title>tlsf/removeBlock — 1 (0.2%)</title><rect x="1008.6" y="36" width="2.8" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1011.6" y="49"></text></g>
+<g data-name="tlsf/searchBlock"><title>tlsf/searchBlock — 1 (0.2%)</title><rect x="1011.4" y="36" width="2.7" height="15" fill="rgb(219,67,16)" rx="2" ry="2"/><text x="1014.4" y="49"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 4 (0.8%)</title><rect x="1014.1" y="52" width="11" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1017.1" y="65"></text></g>
+<g data-name="moonbit.malloc_no_grow"><title>moonbit.malloc_no_grow — 2 (0.4%)</title><rect x="1025.1" y="52" width="5.5" height="15" fill="rgb(231,122,29)" rx="2" ry="2"/><text x="1028.1" y="65"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.2%)</title><rect x="1025.1" y="36" width="2.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1028.1" y="49"></text></g>
+<g data-name="tlsf/insertBlock"><title>tlsf/insertBlock — 1 (0.2%)</title><rect x="1027.9" y="36" width="2.7" height="15" fill="rgb(219,65,15)" rx="2" ry="2"/><text x="1030.9" y="49"></text></g>
+<g data-name="_M0FPB23array__growth__capacity"><title>_M0FPB23array__growth__capacity — 1 (0.2%)</title><rect x="1030.6" y="52" width="2.7" height="15" fill="rgb(208,15,3)" rx="2" ry="2"/><text x="1033.6" y="65"></text></g>
+<g data-name="_M0MPC15array5Array14resize__bufferGRP47walkzzz15moon_2dgeometry4base4core7Point3DE"><title>_M0MPC15array5Array14resize__bufferGRP47walkzzz15moon_2dgeometry4base4core7Point3DE — 1 (0.2%)</title><rect x="1033.3" y="52" width="2.8" height="15" fill="rgb(251,212,50)" rx="2" ry="2"/><text x="1036.3" y="65"></text></g>
+<g data-name="moonbit.ref_array_make_with_blit"><title>moonbit.ref_array_make_with_blit — 1 (0.2%)</title><rect x="1033.3" y="36" width="2.8" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1036.3" y="49"></text></g>
+<g data-name="_M0FP47walkzzz15moon_2dgeometry7spatial6octree20octree__child__index"><title>_M0FP47walkzzz15moon_2dgeometry7spatial6octree20octree__child__index — 74 (14.7%)</title><rect x="1036.1" y="68" width="203" height="15" fill="rgb(207,10,2)" rx="2" ry="2"/><text x="1039.1" y="81"></text></g>
+<g data-name="_M0MPC15array5Array4pushGRP47walkzzz15moon_2dgeometry4base4core7Point3DE"><title>_M0MPC15array5Array4pushGRP47walkzzz15moon_2dgeometry4base4core7Point3DE — 42 (8.3%)</title><rect x="1239.1" y="68" width="115.2" height="15" fill="rgb(247,193,46)" rx="2" ry="2"/><text x="1242.1" y="81"></text></g>
+<g data-name="wasm-to-js"><title>wasm-to-js — 3 (0.6%)</title><rect x="1354.3" y="68" width="8.3" height="15" fill="rgb(245,187,44)" rx="2" ry="2"/><text x="1357.3" y="81"></text></g>
+<g data-name="input [points-client.mjs:5]"><title>input [points-client.mjs:5] — 3 (0.6%)</title><rect x="1354.3" y="52" width="8.3" height="15" fill="rgb(214,43,10)" rx="2" ry="2"/><text x="1357.3" y="65"></text></g>
+<g data-name="moonbit.incref"><title>moonbit.incref — 3 (0.6%)</title><rect x="1362.6" y="68" width="8.2" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="1365.6" y="81"></text></g>
+<g data-name="_M0FP47walkzzz15moon_2dgeometry7spatial6octree20octree__child__index"><title>_M0FP47walkzzz15moon_2dgeometry7spatial6octree20octree__child__index — 3 (0.6%)</title><rect x="1370.8" y="84" width="8.2" height="15" fill="rgb(207,10,2)" rx="2" ry="2"/><text x="1373.8" y="97"></text></g>
+<g data-name="(self)"><title>(self) — 1 (0.2%)</title><rect x="1379" y="84" width="2.8" height="15" fill="rgb(238,153,36)" rx="2" ry="2"/><text x="1382" y="97"></text></g>
+<g data-name="(idle)"><title>(idle) — 1 (0.2%)</title><rect x="1381.8" y="148" width="2.7" height="15" fill="rgb(215,50,11)" rx="2" ry="2"/><text x="1384.8" y="161"></text></g>
+<g data-name="(program)"><title>(program) — 1 (0.2%)</title><rect x="1384.5" y="148" width="2.8" height="15" fill="rgb(230,118,28)" rx="2" ry="2"/><text x="1387.5" y="161"></text></g>
+<g data-name="_M0FP47walkzzz15moon_2dgeometry7spatial6octree20octree__child__index"><title>_M0FP47walkzzz15moon_2dgeometry7spatial6octree20octree__child__index — 1 (0.2%)</title><rect x="1387.3" y="148" width="2.7" height="15" fill="rgb(207,10,2)" rx="2" ry="2"/><text x="1390.3" y="161"></text></g>
+</g>
+</svg>

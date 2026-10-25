@@ -1,0 +1,22 @@
+(root);_M0FP47walkzzz15moon_2dgeometry7spatial6octree20octree__child__index 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build 131
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide 63
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide;_M0FPB23array__growth__capacity 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide;_M0MPB18UninitializedArray23make__and__blit_2einnerGRP47walkzzz15moon_2dgeometry4base4core7Point3DE 6
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide;_M0MPB18UninitializedArray23make__and__blit_2einnerGRP47walkzzz15moon_2dgeometry4base4core7Point3DE;tlsf/insertBlock 2
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide;_M0MPB18UninitializedArray23make__and__blit_2einnerGRP47walkzzz15moon_2dgeometry4base4core7Point3DE;tlsf/removeBlock 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide;_M0MPB18UninitializedArray23make__and__blit_2einnerGRP47walkzzz15moon_2dgeometry4base4core7Point3DE;tlsf/searchBlock 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide;_M0MPC15array5Array14resize__bufferGRP47walkzzz15moon_2dgeometry4base4core7Point3DE;moonbit.ref_array_make_with_blit 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide;moonbit.malloc_no_grow 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide;moonbit.malloc_no_grow;tlsf/insertBlock 1
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree17octree__subdivide;tlsf/insertBlock 4
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0FP47walkzzz15moon_2dgeometry7spatial6octree20octree__child__index 74
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;_M0MPC15array5Array4pushGRP47walkzzz15moon_2dgeometry4base4core7Point3DE 42
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;moonbit.decref;moonbit.gc.free 136
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;moonbit.decref;moonbit.gc.free;tlsf/removeBlock 26
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;moonbit.incref 3
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP26orisgo19walkzzz_2dbenchmark5build;wasm-to-js;input [points-client.mjs:5] 3
+(root);(anonymous);work [diagnostic-profile.mjs:24];build [points-client.mjs:11];js-to-wasm:ii:i;_M0FP47walkzzz15moon_2dgeometry7spatial6octree20octree__child__index 3
+(root);(idle) 1
+(root);(program) 1
