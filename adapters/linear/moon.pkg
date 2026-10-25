@@ -1,0 +1,13 @@
+import {
+  "orisgo/octree/geom",
+  "orisgo/octree/objects",
+  "moonbitlang/core/encoding/utf8",
+}
+
+pkgtype(kind: "foreign_library")
+
+supported_targets = "+wasm"
+
+options(
+  link: { "wasm": { "export-memory-name": "memory" } },
+)

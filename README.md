@@ -16,7 +16,10 @@
 2026-10-23 补充纯 MoonBit 批量 AABB/射线查询，支持批次输出区间预校验和逐条结果/几何错误。用法见 [API 使用说明](docs/api.md)。
 本次后端验证及限制见 [批量查询验收](docs/validation-batch.md)。
 
-已补充 [JS/WASM 双后端实验原型](docs/wasm-prototype.md)，验证标量 staging 与批量查询的端到端语义；正式批量传输、浏览器示例和性能基准尚未实现。动态写入、单精度存储和点云索引仍属于后续路线。第一阶段完成不代表首版已发布或已完成受限设备资源验收。
+已补充 [JS/WASM 双后端实验原型](docs/wasm-prototype.md)，验证标量 staging 与批量查询的端到端语义。
+2026-10-25 实现 [wasm 线性内存批量适配 v1](docs/wasm-linear.md)：整块复制输入/结果、版本检查、
+错误详情及传输预算，已完成 Node.js debug/release 验证。wasm-gc 块传输、浏览器示例和性能基准尚未实现。
+动态写入、单精度存储和点云索引仍属于后续路线。M2 尚未整体验收，第一阶段完成不代表首版已发布或已完成受限设备资源验收。
 
 ## 设计文档
 
@@ -45,3 +48,6 @@ prek run --all-files
 配置使用 prek 内置文本检查和本机 MoonBit 命令，无需下载远端 hook 仓库。MoonBit 包源码或配置变更会触发格式化及 wasm、wasm-gc 的检查和测试；纯文档变更不触发这些编译检查。格式化如修改文件，需要复核、重新暂存并重跑。
 
 独立 `.mbtx` 调研脚本仅接受通用文本检查，不自动执行其网络或文件操作。公开 API 变化仍需额外运行 `moon info` 并复核生成接口；JS/native 验证、性能测量和其他契约验收按任务范围补充。
+
+适配层变更还需执行 [双后端原型测试](docs/wasm-prototype.md#复现与验收)及
+[线性内存适配 debug/release 集成测试](docs/wasm-linear.md#复现与验收)，这些 Node 测试不在 hooks 中。

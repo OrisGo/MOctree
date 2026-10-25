@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "orisgo/octree/adapters/linear"
+
+// Values
+pub fn abi_version() -> Int32
+
+pub fn build(Int32, Int32, Int32) -> Int32
+
+pub fn query(Int32, Int32, Int32) -> Int32
+
+pub fn release() -> Unit
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

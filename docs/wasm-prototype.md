@@ -53,6 +53,10 @@ report 非法位置/字段返回 -1，result_id 非法位置返回 0，不作为
 后续需分别验证线性内存与 wasm-gc 的大块传输方式，再确定导出名称、版本握手、
 缓冲布局、复制成本和失效规则。正式适配还需错误详情、资源上限、浏览器端到端与资源测量。
 
+2026-10-25 更新：已另行实现 [wasm 线性内存批量适配 v1](wasm-linear.md)，提供整块复制、
+版本检查、错误详情和传输预算；此标量原型继续保留作双后端语义对照。
+wasm-gc 块传输、浏览器端到端与资源测量仍待完成。
+
 实现参考 [MoonBit FFI](https://docs.moonbitlang.com/en/latest/language/ffi.html)
 及 [包配置](https://docs.moonbitlang.com/en/latest/toolchain/moon/package.html)，
 使用 foreign_library 和 export_name；精确可用性以本机工具链编译与执行结果为依据。

@@ -1,6 +1,6 @@
 # 结构设计
 
-状态：geom、objects、根包入口及 adapters/prototype 实验原型已实现；其余目录和未来类型为规划示意。更新日期：2026-10-23。
+状态：geom、objects、根包入口、adapters/prototype 实验原型及 adapters/linear 的 wasm 批量适配已实现；其余目录和未来类型为规划示意。更新日期：2026-10-25。
 
 ## 1. 设计原则
 
@@ -133,8 +133,14 @@ StaticObjectIndex 已实现；DynamicObjectIndex、StaticPointIndex、DynamicPoi
 
 wasm 与 wasm-gc 可以使用不同的传输实现，但必须保持相同查询语义。单精度扩展时增加明确格式，而不是悄悄改变既有 Double 接口的含义。
 
-本轮不冻结二进制布局、导出函数名称、JS TypedArray 组合或内存句柄协议。
+核心不冻结宿主二进制布局；各适配层独立版本化并说明工具链依赖。
 
 2026-10-23：`adapters/prototype` 已实现双后端标量导出原型和 JS 包装器，
 验证输入复制、失败重建保留旧索引及独立结果副本。模块内复用纯 MoonBit 批量查询；
 传输仍逐项 staging，不作为最终高效批量 ABI。详见 [原型协议与验收](wasm-prototype.md)。
+
+2026-10-25：`adapters/linear` 提供仅 wasm 的 [批量传输 v1](wasm-linear.md)。
+模块导出线性内存，传输数组通过借用 FFI 在同步回调中整块复制，包装器不暴露内存/指针。
+输入、核心条目、结果均有明确副本；全局状态只保留索引与工作区，传输数组限于单次调用。
+数字数组载荷依赖本机已验证的编译器表示，集中在 transport.mbt；升级工具链须重跑
+debug/release 集成测试。wasm-gc 仍使用独立原型作对照，不声称共享此布局或已完成 M2。
