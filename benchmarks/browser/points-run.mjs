@@ -36,4 +36,7 @@ try{
   await writeFile(join(output,'points.json'),JSON.stringify(result)+'\n');
   if(record)for(const size of result.options.sizes){const part={...result,archiveSize:size,rows:result.rows.filter(r=>r.count===size),builds:result.builds.filter(r=>r.count===size),resources:result.resources.filter(r=>r.count===size)};await writeFile(join(root,'benchmarks/results',result.startedAt.replace(/[:.]/g,'-')+`-points-${size}-chrome.json`),JSON.stringify(part)+'\n',{flag:'wx'});}
   console.log(`PASS ${result.rows.length} point rows, UI and coordinate multiset checks`);
-}finally{await browser?.close();await new Promise(r=>server.close(r));}
+}finally{
+  try{await browser?.close();}
+  finally{await new Promise(r=>server.close(r));}
+}
