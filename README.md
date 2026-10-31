@@ -30,6 +30,26 @@ moon test --target wasm
 
 已记录验收使用的编译器为 `moonc v0.10.16+b1a0e846e`。WASM 适配模块与 JavaScript 包装器需要匹配使用，具体要求见[线性内存适配文档](docs/wasm-linear.md)。
 
+### 运行最小使用示例
+
+在仓库根目录执行以下命令，只运行[最小示例](api_example_test.mbt)：
+
+```sh
+moon test api_example_test.mbt --target wasm
+```
+
+预期输出：
+
+```text
+Total tests: 1, passed: 1, failed: 0.
+```
+
+示例采用测试形式：构建包含对象 `42U` 的索引，分别执行 AABB 和射线查询，
+再复用工作区与结果缓冲查询。断言检查两种查询都命中 `42U`，且缓冲查询的
+`total_hits`、`written` 均为 `1`，结果状态为 `Complete`；失败时命令返回非零状态。
+只需 MoonBit 工具链，无需 Node.js 或浏览器。将 `--target wasm` 换为 `--target wasm-gc`
+可验证另一后端；运行全部核心测试则使用 `moon test --target wasm`。
+
 ### MoonBit 中构建与查询
 
 消费包在 `moon.pkg` 中导入 `OrisGo/octree`，别名使用 `@octree`。以下片段展示构建和查询流程，需放在允许 `raise` 的函数中，或使用 `try/catch` 处理几何与构建错误：

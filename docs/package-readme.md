@@ -10,6 +10,20 @@
 导入根包 `OrisGo/octree`，或公开包 `OrisGo/octree/geom`、`OrisGo/octree/objects`。
 详见 [API 用法](api.md)、[生成接口](../pkg.generated.mbti)。Apache-2.0，见 [LICENSE](../LICENSE)。
 
+## 最小使用示例
+
+源码包内包含[可运行的示例测试](../api_example_test.mbt)。在本模块源码根目录执行：
+
+```sh
+moon test api_example_test.mbt --target wasm
+```
+
+预期输出 `Total tests: 1, passed: 1, failed: 0.`。示例验证对象 `42U` 的 AABB、射线查询，
+以及复用工作区和结果缓冲后的命中数、写入数与完整性状态。无需 Node.js 或浏览器。
+消费项目的安装与源码获取方式见[仓库快速开始](https://github.com/OrisGo/MOctree#快速开始)。
+
+## WASM 宿主接入
+
 发布包包含纯 MoonBit 源码及 `adapters/linear/client.mjs`、`adapters/prototype/client.mjs`。
 WASM 文件需用匹配工具链构建，例如 `moon build adapters/linear --target wasm --release`。
 线性适配 v1 依赖已验证的编译器数字数组表示；模块与 JS 包装器应成对使用并完成集成验收。
