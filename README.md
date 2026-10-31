@@ -4,7 +4,7 @@
 
 核心采用双精度坐标，批量构建后只读查询，不依赖 DOM、Three.js、WebGPU 或特定 WASI 宿主。MoonBit 模块名为 `OrisGo/octree`。
 
-> 项目处于开发阶段：静态索引核心与 wasm 批量适配已实现，M2 尚未整体验收，首版尚未正式发布。
+> 已发布 `OrisGo/octree@0.1.0` 到 Mooncakes。项目仍处于开发阶段，静态索引核心与 wasm 批量适配已实现，M2 尚未整体验收。
 
 ## 功能
 
@@ -19,7 +19,7 @@
 
 ### 获取源码
 
-当前从源码构建，需先安装 MoonBit 工具链：
+安装 MoonBit 工具链后，可在消费项目中运行 `moon add OrisGo/octree@0.1.0`。也可从源码构建：
 
 ```sh
 git clone https://github.com/OrisGo/MOctree.git
