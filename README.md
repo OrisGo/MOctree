@@ -2,7 +2,7 @@
 
 使用纯 MoonBit 实现核心算法的三维空间索引库，面向浏览器等 WebAssembly 运行环境。通过八叉树组织对象的轴对齐包围盒（AABB），为区域筛选、框选和射线拾取提供候选对象查询。
 
-核心采用双精度坐标，批量构建后只读查询，不依赖 DOM、Three.js、WebGPU 或特定 WASI 宿主。MoonBit 模块名为 `orisgo/octree`。
+核心采用双精度坐标，批量构建后只读查询，不依赖 DOM、Three.js、WebGPU 或特定 WASI 宿主。MoonBit 模块名为 `OrisGo/octree`。
 
 > 项目处于开发阶段：静态索引核心与 wasm 批量适配已实现，M2 尚未整体验收，首版尚未正式发布。
 
@@ -32,7 +32,7 @@ moon test --target wasm
 
 ### MoonBit 中构建与查询
 
-消费包在 `moon.pkg` 中导入 `orisgo/octree`，别名使用 `@octree`。以下片段展示构建和查询流程，需放在允许 `raise` 的函数中，或使用 `try/catch` 处理几何与构建错误：
+消费包在 `moon.pkg` 中导入 `OrisGo/octree`，别名使用 `@octree`。以下片段展示构建和查询流程，需放在允许 `raise` 的函数中，或使用 `try/catch` 处理几何与构建错误：
 
 ```moonbit
 let root = @octree.Cube::new(@octree.Vec3::origin(), 100.0)

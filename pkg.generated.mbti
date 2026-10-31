@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "orisgo/octree"
+package "OrisGo/octree"
 
 import {
-  "orisgo/octree/geom",
-  "orisgo/octree/objects",
+  "OrisGo/octree/geom",
+  "OrisGo/octree/objects",
 }
 
 // Values

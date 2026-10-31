@@ -15,7 +15,7 @@ def run(*args, cwd=root):
 manifest = (root / "moon.mod").read_text()
 name = re.search(r'^name\s*=\s*"([^"]+)"', manifest, re.M)[1]
 version = re.search(r'^version\s*=\s*"([^"]+)"', manifest, re.M)[1]
-if name != "orisgo/octree":
+if name != "OrisGo/octree":
     raise SystemExit("Unexpected module name")
 run("moon", "package", "--list")
 archive = root / "_build/publish" / (name.replace("/", "-") + "-" + version + ".zip")
@@ -42,7 +42,7 @@ with zipfile.ZipFile(archive) as bundle, tempfile.TemporaryDirectory(prefix="moc
     consumer = work / "consumer"
     consumer.mkdir()
     (consumer / "moon.mod").write_text(f'name = "ci/consumer"\nversion = "0.1.0"\nimport {{ "{name}@{version}", }}\n')
-    (consumer / "moon.pkg").write_text('import { "orisgo/octree" @octree, } for "test"\n')
+    (consumer / "moon.pkg").write_text('import { "OrisGo/octree" @octree, } for "test"\n')
     (consumer / "smoke_test.mbt").write_text('''///|
 test "packaged facade and bounded results" {
   let root = @octree.Cube::new(@octree.Vec3::origin(), 10.0)

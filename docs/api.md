@@ -1,6 +1,6 @@
 # API 使用说明
 
-核心由 `orisgo/octree/geom` 和 `orisgo/octree/objects` 两个公开包组成。根包 `orisgo/octree` 导出便捷入口，以下代码以根包别名 `@octree` 为例。
+核心由 `OrisGo/octree/geom` 和 `OrisGo/octree/objects` 两个公开包组成。根包 `OrisGo/octree` 导出便捷入口，以下代码以根包别名 `@octree` 为例。
 
 精确接口可查阅 [根包接口](../pkg.generated.mbti)、[几何接口](../geom/pkg.generated.mbti)和 [对象索引接口](../objects/pkg.generated.mbti)。这些文件由 `moon info` 生成，不手工编辑。
 

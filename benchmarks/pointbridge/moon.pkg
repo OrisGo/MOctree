@@ -1,6 +1,6 @@
 import {
-  "orisgo/octree/geom",
-  "orisgo/octree/objects",
+  "OrisGo/octree/geom",
+  "OrisGo/octree/objects",
 }
 
 pkgtype(kind: "foreign_library")
