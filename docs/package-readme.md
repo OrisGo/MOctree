@@ -1,4 +1,4 @@
-# orisgo/octree
+# OrisGo/octree
 
 核心由纯 MoonBit 实现的静态三维 AABB 对象索引，附带 JavaScript/WASM 宿主包装器。输入、存储与计算使用 Double；批量构建后只读查询。
 
@@ -7,7 +7,7 @@
 构建要求显式固定根及对象/节点预算；根外对象和重复 ID 报错，节点预算耗尽时停止细分而不丢弃对象。
 缓冲不足返回截断状态，不把未知总数伪装为准确计数。
 
-导入根包 `orisgo/octree`，或公开包 `orisgo/octree/geom`、`orisgo/octree/objects`。
+导入根包 `OrisGo/octree`，或公开包 `OrisGo/octree/geom`、`OrisGo/octree/objects`。
 详见 [API 用法](api.md)、[生成接口](../pkg.generated.mbti)。Apache-2.0，见 [LICENSE](../LICENSE)。
 
 发布包包含纯 MoonBit 源码及 `adapters/linear/client.mjs`、`adapters/prototype/client.mjs`。

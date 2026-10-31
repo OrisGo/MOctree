@@ -1,6 +1,6 @@
 # 浏览器验收、资源基准与 MoonFlame
 
-这里测试 `orisgo/octree` 的浏览器 WASM 路径。`browser/` 为数据、独立扫描对照、
+这里测试 `OrisGo/octree` 的浏览器 WASM 路径。`browser/` 为数据、独立扫描对照、
 浏览器驱动和展示页；`profile/` 是独立 MoonBit 模块，仅依赖指定的
 `gywcs101/moonflame@0.2.0` 生成火焰图。它不进入 octree 根模块依赖或计时路径。
 

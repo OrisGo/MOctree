@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "orisgo/octree/objects"
+package "OrisGo/octree/objects"
 
 import {
+  "OrisGo/octree/geom",
   "moonbitlang/core/debug",
-  "orisgo/octree/geom",
 }
 
 // Values

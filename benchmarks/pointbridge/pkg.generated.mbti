@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "orisgo/octree/benchmarks/pointbridge"
+package "OrisGo/octree/benchmarks/pointbridge"
 
 // Values
 pub fn build(Int32, Int32) -> Int32

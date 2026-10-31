@@ -1,4 +1,4 @@
-name = "orisgo/octree"
+name = "OrisGo/octree"
 
 version = "0.1.0"
 
